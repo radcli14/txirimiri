@@ -10,7 +10,7 @@ import SwiftData
 
 @main
 struct txirimiriApp: App {
-    let manager = ContentManager(for: "icloud.com.dcengineer.txirimiri")
+    let manager = ContentManager(for: "iCloud.com.dcengineer.txirimiri")
     
     var body: some Scene {
         WindowGroup {
