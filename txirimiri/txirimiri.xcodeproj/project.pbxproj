@@ -37,6 +37,22 @@
 			);
 			target = 8A1517662E894BB3000266B4 /* txirimiri */;
 		};
+		8A6EA1862E8A6BCE00B73123 /* Exceptions for "txirimiri" folder in "txirimiriTests" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				ContentManager.swift,
+				Model3D.swift,
+			);
+			target = 8A1517772E894BB5000266B4 /* txirimiriTests */;
+		};
+		8A6EA1872E8A6BCE00B73123 /* Exceptions for "txirimiri" folder in "txirimiriUITests" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				ContentManager.swift,
+				Model3D.swift,
+			);
+			target = 8A1517812E894BB5000266B4 /* txirimiriUITests */;
+		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -44,6 +60,8 @@
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
 				8A15178A2E894BB5000266B4 /* Exceptions for "txirimiri" folder in "txirimiri" target */,
+				8A6EA1862E8A6BCE00B73123 /* Exceptions for "txirimiri" folder in "txirimiriTests" target */,
+				8A6EA1872E8A6BCE00B73123 /* Exceptions for "txirimiri" folder in "txirimiriUITests" target */,
 			);
 			path = txirimiri;
 			sourceTree = "<group>";
