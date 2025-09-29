@@ -11,8 +11,21 @@ struct ModelSelectionView: View {
     @Environment(ContentManager.self) var manager
     
     var body: some View {
-        List(manager.models) { model in
-            ModelMenuContent(model: model)
+        VStack {
+            Image(.header)
+                .foregroundColor(.green)
+            List {
+                Section("Select a model from the list") {
+                    ForEach(manager.models) { model in
+                        NavigationLink(value: model) {
+                            ModelMenuContent(model: model)
+                        }
+                    }
+                }
+            }
+            .refreshable {
+                await manager.fetchLightweightRecords()
+            }
         }
         .task {
             await manager.fetchLightweightRecords()

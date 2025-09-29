@@ -7,7 +7,7 @@
 
 import Foundation
 
-struct Model3D: Identifiable {
+struct Model3D: Identifiable, Hashable {
     var name: String
     var description: String
     var ext: String?

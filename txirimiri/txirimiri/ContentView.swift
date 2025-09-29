@@ -11,8 +11,11 @@ struct ContentView: View {
     var body: some View {
         NavigationSplitView {
             ModelSelectionView()
+                .navigationDestination(for: Model3D.self) { model in
+                    Text(model.name)
+                }
         } detail: {
-            Text("Select an item")
+            Text("Select a model")
         }
     }
 }

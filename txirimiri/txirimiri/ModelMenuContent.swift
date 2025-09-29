@@ -24,7 +24,7 @@ struct ModelMenuContent: View {
         }
     }
     
-    func thumbnailOrPlaceholderImage() -> some View {
+    private func thumbnailOrPlaceholderImage() -> some View {
         Group {
             if let thumbnail = model.thumbnail,
                 let uiImage = UIImage(data: thumbnail) {
@@ -35,8 +35,7 @@ struct ModelMenuContent: View {
                     .resizable()
                     .padding(8)
                     .task {
-                        let newModel = await manager.fetchThumbnail(for: model.id)
-                        print("fetched newModel: \(newModel)")
+                        let _ = await manager.fetchThumbnail(for: model.id)
                     }
             }
         }

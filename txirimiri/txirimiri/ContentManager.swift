@@ -37,7 +37,6 @@ class ContentManager {
         let query = buildQuery(for: name)
         let records = await fetchRecords(for: query, desiredKeys: ["thumbnail"])
         updateModels(with: records)
-        print("fetchThumbnail, records: \(records)")
         return models.first(where: { $0.id == name })
     }
     
