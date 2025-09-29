@@ -42,6 +42,7 @@
 			membershipExceptions = (
 				ContentManager.swift,
 				Model3D.swift,
+				Model3DView.swift,
 				ModelMenuContent.swift,
 				ModelSelectionView.swift,
 			);
@@ -52,6 +53,7 @@
 			membershipExceptions = (
 				ContentManager.swift,
 				Model3D.swift,
+				Model3DView.swift,
 				ModelMenuContent.swift,
 				ModelSelectionView.swift,
 			);
