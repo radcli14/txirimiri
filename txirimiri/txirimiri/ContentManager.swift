@@ -37,6 +37,7 @@ class ContentManager {
         let query = buildQuery(for: name)
         let records = await fetchRecords(for: query, desiredKeys: ["thumbnail"])
         updateModels(with: records)
+        print("fetchThumbnail, records: \(records)")
         return models.first(where: { $0.id == name })
     }
     
@@ -93,8 +94,8 @@ class ContentManager {
             let name = record.value(forKey: "name") as? String
             let description = record.value(forKey: "description") as? String
             let ext = record.value(forKey: "extension") as? String
-            let model = record.value(forKey: "model") as? Data
-            let thumbnail = record.value(forKey: "thumbnail") as? Data
+            let model = record.data(forKey: "model")
+            let thumbnail = record.data(forKey: "thumbnail")
             
             // If it exists, update the existing model with any new data
             if let index = models.firstIndex(where: { $0.id == id }) {
@@ -118,5 +119,13 @@ class ContentManager {
                 models.append(newModel)
             }
         }
+    }
+}
+
+extension CKRecord {
+    func data(forKey key: String) -> Data? {
+        guard let asset = value(forKey: key) as? CKAsset else { return nil }
+        guard let fileURL = asset.fileURL else { return nil }
+        return try? Data(contentsOf: fileURL)
     }
 }

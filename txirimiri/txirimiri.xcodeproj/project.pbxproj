@@ -42,6 +42,8 @@
 			membershipExceptions = (
 				ContentManager.swift,
 				Model3D.swift,
+				ModelMenuContent.swift,
+				ModelSelectionView.swift,
 			);
 			target = 8A1517772E894BB5000266B4 /* txirimiriTests */;
 		};
@@ -50,6 +52,8 @@
 			membershipExceptions = (
 				ContentManager.swift,
 				Model3D.swift,
+				ModelMenuContent.swift,
+				ModelSelectionView.swift,
 			);
 			target = 8A1517812E894BB5000266B4 /* txirimiriUITests */;
 		};
