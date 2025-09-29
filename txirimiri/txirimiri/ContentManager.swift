@@ -10,5 +10,9 @@ import CloudKit
 
 @Observable
 class ContentManager {
-    /* We will fill in our initialization and fetch methods here */
+    let database: CKDatabase
+    init(for identifier: String) {
+        let container = CKContainer(identifier: identifier)
+        database = container.publicCloudDatabase
+    }
 }
