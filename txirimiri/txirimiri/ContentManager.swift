@@ -8,6 +8,10 @@
 import Foundation
 import CloudKit
 
+/// The class responsible for querying for content in the form of `Model3D` from a CloudKit database, and providing to the UI.
+/// Should be initialized using a string identifier for the CloudKit container, for example `"iCloud.com.dcengineer.txirimiri"`.
+/// Stored variables are an array `models` of `Model3D`.
+/// Fetch methods include a lightweight query, which only obtains simple text for low bandwidth usage, and separate queries for thumbnail images and 3D model data, which are expected to be larger files.
 @Observable
 class ContentManager {
     let database: CKDatabase
@@ -23,19 +27,51 @@ class ContentManager {
     
     /// Perform a query for only the `name`, `description`, and `extension` fields for all models available in the database
     func fetchLightweightRecords() async {
-        // Build a query for records of type Model3D
-        let predicate = NSPredicate(value: true)
-        let query = CKQuery(
+        let query = buildQuery()
+        let records = await fetchRecords(for: query, desiredKeys: ["name", "description", "extension"])
+        updateModels(with: records)
+    }
+    
+    /// Perform a query for `thumbnail` data of a specific record
+    func fetchThumbnail(for name: String) async -> Model3D? {
+        let query = buildQuery(for: name)
+        let records = await fetchRecords(for: query, desiredKeys: ["thumbnail"])
+        updateModels(with: records)
+        return models.first(where: { $0.id == name })
+    }
+    
+    /// Perform a query for `model` data of a specific record
+    func fetchModel(for name: String) async -> Model3D? {
+        let query = buildQuery(for: name)
+        let records = await fetchRecords(for: query, desiredKeys: ["model"])
+        updateModels(with: records)
+        return models.first(where: { $0.id == name })
+    }
+    
+    /// Build a query for records of type `Model3D`.
+    /// An optional `name` argument can be provided, if this is not-nil, then
+    /// a predicate will be constructed to only search for records with that name.
+    private func buildQuery(for name: String? = nil) -> CKQuery {
+        let predicate: NSPredicate
+        if let name {
+            let recordID: CKRecord.ID = CKRecord.ID(recordName: name)
+            predicate = NSPredicate(format: "recordID=%@", recordID)
+        } else {
+            predicate = NSPredicate(value: true)
+        }
+        
+        return CKQuery(
             recordType: "Model3D",
             predicate: predicate
         )
-
-        // Gather all of the CKRecord objects for the Model3D schema, in lightweight form
-        let records: [CKRecord]
+    }
+    
+    /// Asynchronously fetch records from the CloudKit database for a given `CKQuery` and string array of keys
+    private func fetchRecords(for query: CKQuery, desiredKeys: [String]) async -> [CKRecord] {
         do {
-            records = try await database.records(
+            return try await database.records(
                 matching: query,
-                desiredKeys: ["name", "description", "extension"]
+                desiredKeys: desiredKeys
             )
             .matchResults
             .compactMap { (id, result) in
@@ -45,35 +81,42 @@ class ContentManager {
                 }
             }
         } catch {
-            print("Could not fetch lightweight records: \(error.localizedDescription)")
-            return
+            print("Could not fetch records for \n - query: \(query.recordType)\n - predicate \(query.predicate)\n - desiredKeys: \(desiredKeys)\n - error: \(error.localizedDescription)")
+            return []
         }
-        
-        // Update the stored models given the array of CKRecord
+    }
+    
+    /// Update the stored models given the array of `CKRecord`
+    private func updateModels(with records: [CKRecord]) {
         records.forEach { record in
             let id = record.recordID.recordName
             let name = record.value(forKey: "name") as? String
             let description = record.value(forKey: "description") as? String
+            let ext = record.value(forKey: "extension") as? String
+            let model = record.value(forKey: "model") as? Data
+            let thumbnail = record.value(forKey: "thumbnail") as? Data
+            
+            // If it exists, update the existing model with any new data
             if let index = models.firstIndex(where: { $0.id == id }) {
-                models[index].name = name ?? models[index].name
-                models[index].description = description ?? models[index].description
+                let existingModel = models[index]
+                models[index].name = name ?? existingModel.name
+                models[index].description = description ?? existingModel.description
+                models[index].ext = ext ?? existingModel.ext
+                models[index].model = model ?? existingModel.model
+                models[index].thumbnail = thumbnail ?? existingModel.thumbnail
+                
+            // Otherwise create a new model with all available data
             } else if let name, let description {
-                models.append(Model3D(
+                let newModel = Model3D(
                     name: name,
                     description: description,
+                    ext: ext,
+                    model: model,
+                    thumbnail: thumbnail,
                     id: id
-                ))
+                )
+                models.append(newModel)
             }
         }
-    }
-    
-    /// Perform a query for `thumbnail` data of a specific record
-    func fetchThumbnail(for name: String) async -> Model3D? {
-        return nil
-    }
-    
-    /// Perform a query for `model` data of a specific record
-    func fetchModel(for name: String) async -> Model3D? {
-        return nil
     }
 }

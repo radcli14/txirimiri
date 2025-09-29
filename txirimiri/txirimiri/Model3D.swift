@@ -10,7 +10,8 @@ import Foundation
 struct Model3D: Identifiable {
     var name: String
     var description: String
-    var data: Data?
+    var ext: String?
+    var model: Data?
     var thumbnail: Data?
     
     var id: String

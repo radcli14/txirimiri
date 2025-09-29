@@ -23,7 +23,6 @@ struct ContentView: View {
             Text("Select an item")
         }
         .task {
-            print("task")
             await manager.fetchLightweightRecords()
         }
     }
