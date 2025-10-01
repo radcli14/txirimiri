@@ -96,25 +96,21 @@ class ContentManager {
             let model = record.data(forKey: "model")
             let thumbnail = record.data(forKey: "thumbnail")
             
-            // If it exists, update the existing model with any new data
+            // Create a new model with all available data
+            let existingModel = models.first(where: { $0.id == id })
+            let newModel = Model3D(
+                name: name ?? existingModel?.name ?? id,
+                description: description ?? existingModel?.description ?? id,
+                ext: ext ?? existingModel?.ext,
+                model: model ?? existingModel?.model,
+                thumbnail: thumbnail ?? existingModel?.thumbnail,
+                id: id
+            )
+            
+            // If it exists, update the existing model with any new data, otherwise add it
             if let index = models.firstIndex(where: { $0.id == id }) {
-                let existingModel = models[index]
-                models[index].name = name ?? existingModel.name
-                models[index].description = description ?? existingModel.description
-                models[index].ext = ext ?? existingModel.ext
-                models[index].model = model ?? existingModel.model
-                models[index].thumbnail = thumbnail ?? existingModel.thumbnail
-                
-            // Otherwise create a new model with all available data
+                models[index] = newModel
             } else if let name, let description {
-                let newModel = Model3D(
-                    name: name,
-                    description: description,
-                    ext: ext,
-                    model: model,
-                    thumbnail: thumbnail,
-                    id: id
-                )
                 models.append(newModel)
             }
         }
