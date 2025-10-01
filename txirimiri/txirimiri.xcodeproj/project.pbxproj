@@ -43,6 +43,7 @@
 				ContentManager.swift,
 				Model3D.swift,
 				Model3DView.swift,
+				"Model3DView+ViewModel.swift",
 				ModelMenuContent.swift,
 				ModelSelectionView.swift,
 			);
@@ -54,6 +55,7 @@
 				ContentManager.swift,
 				Model3D.swift,
 				Model3DView.swift,
+				"Model3DView+ViewModel.swift",
 				ModelMenuContent.swift,
 				ModelSelectionView.swift,
 			);

@@ -12,7 +12,7 @@ struct ContentView: View {
         NavigationSplitView {
             ModelSelectionView()
                 .navigationDestination(for: Model3D.self) { model in
-                    Model3DView(model: model)
+                    Model3DView(for: model)
                         .navigationTitle(model.name)
                 }
         } detail: {
