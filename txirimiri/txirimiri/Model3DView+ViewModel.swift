@@ -27,10 +27,9 @@ extension Model3DView {
 extension Model3DView.ViewModel {
     
     /// Asynchrnously onverts the data stored in the model to a RealityKit Entity, or fetches a new model from CloudKit.
-    @MainActor
     func getEntity(from manager: ContentManager) async -> ModelEntity? {
         // If the entity has already been loaded, return it
-        if entity != nil {
+        if let entity {
             return entity
         }
         
@@ -51,9 +50,12 @@ extension Model3DView.ViewModel {
         try? data.write(to: tempURL)
 
         // Load the entity, clean up the temporary file, and return the entity
+        guard model.ext == "usdz" else {
+            print("WARNING: \(model.ext ?? "nil") is not a supported file extension for loading an entity, returning nil")
+            return nil
+        }
         entity = try? await ModelEntity(contentsOf: tempURL)
-        entity?.name = model.name
-        
+
         // Clean up the temporary file, and return
         try? FileManager.default.removeItem(at: tempURL)
         
