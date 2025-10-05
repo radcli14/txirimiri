@@ -14,6 +14,7 @@ struct ContentView: View {
                 .navigationDestination(for: Model3D.self) { model in
                     Model3DView(for: model)
                         .navigationTitle(model.name)
+                        .id(model.id)
                 }
         } detail: {
             Text("Select a model")
