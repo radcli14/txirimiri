@@ -1,8 +1,10 @@
-# <img src="Assets/icon_outlined.png" width="256" />
+# <img src="Assets/icon_outlined.png" height="256" /> 
 
 _Host 3D models in USDZ format on CloudKit for an iOS app._
 
-This repository is a companion to a (upcoming) tutorial on the DC-Engineer.com blog.
+<img src="Assets/txirimiriMacOsPuppyHighlight.png" height="196" /> <img src="Assets/txirimiriList.jpeg" height="196" /> <img src="Assets/txirimiriVirtual.jpeg" height="196" /> <img src="Assets/txirimiriAR.jpeg" height="196" />
+
+This repository is a companion to a [tutorial on the DC-Engineer.com blog](https://www.dc-engineer.com/how-to-host-3d-usdz-content-in-icloud-for-an-ar-app-using-cloudkit-realitykit-and-swiftui/).
 In that tutorial, I explain the methods and code used to generate a CloudKit container for 3D models and associated data, and then fetch that data at run time for viewing in augmented reality (AR).
 RealityKit and SwiftUI frameworks are used for 3D rendering and creation of native controls.
 
