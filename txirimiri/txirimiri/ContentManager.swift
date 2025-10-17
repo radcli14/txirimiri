@@ -110,7 +110,7 @@ class ContentManager {
             // If it exists, update the existing model with any new data, otherwise add it
             if let index = models.firstIndex(where: { $0.id == id }) {
                 models[index] = newModel
-            } else if let name, let description {
+            } else if name != nil, description != nil {
                 models.append(newModel)
             }
         }
