@@ -27,6 +27,7 @@
 		8A1517672E894BB3000266B4 /* txirimiri.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = txirimiri.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		8A1517782E894BB5000266B4 /* txirimiriTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = txirimiriTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		8A1517822E894BB5000266B4 /* txirimiriUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = txirimiriUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		8ABE71CC2EB666BB00029749 /* Model3DLoader.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Model3DLoader.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -84,6 +85,11 @@
 			path = txirimiriUITests;
 			sourceTree = "<group>";
 		};
+		8ABE71CD2EB666BB00029749 /* Model3DLoader */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Model3DLoader;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -108,6 +114,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		8ABE71C92EB666BB00029749 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -117,6 +130,7 @@
 				8A1517692E894BB3000266B4 /* txirimiri */,
 				8A15177B2E894BB5000266B4 /* txirimiriTests */,
 				8A1517852E894BB5000266B4 /* txirimiriUITests */,
+				8ABE71CD2EB666BB00029749 /* Model3DLoader */,
 				8A1517682E894BB3000266B4 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -127,6 +141,7 @@
 				8A1517672E894BB3000266B4 /* txirimiri.app */,
 				8A1517782E894BB5000266B4 /* txirimiriTests.xctest */,
 				8A1517822E894BB5000266B4 /* txirimiriUITests.xctest */,
+				8ABE71CC2EB666BB00029749 /* Model3DLoader.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -202,6 +217,28 @@
 			productReference = 8A1517822E894BB5000266B4 /* txirimiriUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
+		8ABE71CB2EB666BB00029749 /* Model3DLoader */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 8ABE71D62EB666BE00029749 /* Build configuration list for PBXNativeTarget "Model3DLoader" */;
+			buildPhases = (
+				8ABE71C82EB666BB00029749 /* Sources */,
+				8ABE71C92EB666BB00029749 /* Frameworks */,
+				8ABE71CA2EB666BB00029749 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				8ABE71CD2EB666BB00029749 /* Model3DLoader */,
+			);
+			name = Model3DLoader;
+			packageProductDependencies = (
+			);
+			productName = Model3DLoader;
+			productReference = 8ABE71CC2EB666BB00029749 /* Model3DLoader.app */;
+			productType = "com.apple.product-type.application";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -209,7 +246,7 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 1640;
+				LastSwiftUpdateCheck = 2600;
 				LastUpgradeCheck = 1640;
 				TargetAttributes = {
 					8A1517662E894BB3000266B4 = {
@@ -222,6 +259,9 @@
 					8A1517812E894BB5000266B4 = {
 						CreatedOnToolsVersion = 16.4;
 						TestTargetID = 8A1517662E894BB3000266B4;
+					};
+					8ABE71CB2EB666BB00029749 = {
+						CreatedOnToolsVersion = 26.0.1;
 					};
 				};
 			};
@@ -242,6 +282,7 @@
 				8A1517662E894BB3000266B4 /* txirimiri */,
 				8A1517772E894BB5000266B4 /* txirimiriTests */,
 				8A1517812E894BB5000266B4 /* txirimiriUITests */,
+				8ABE71CB2EB666BB00029749 /* Model3DLoader */,
 			);
 		};
 /* End PBXProject section */
@@ -268,6 +309,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		8ABE71CA2EB666BB00029749 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -286,6 +334,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		8A15177E2E894BB5000266B4 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		8ABE71C82EB666BB00029749 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -563,6 +618,72 @@
 			};
 			name = Release;
 		};
+		8ABE71D42EB666BE00029749 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 59VPT4KMHW;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.dc-engineer.Model3DLoader";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		8ABE71D52EB666BE00029749 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 59VPT4KMHW;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.dc-engineer.Model3DLoader";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -598,6 +719,15 @@
 			buildConfigurations = (
 				8A1517942E894BB5000266B4 /* Debug */,
 				8A1517952E894BB5000266B4 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		8ABE71D62EB666BE00029749 /* Build configuration list for PBXNativeTarget "Model3DLoader" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				8ABE71D42EB666BE00029749 /* Debug */,
+				8ABE71D52EB666BE00029749 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
