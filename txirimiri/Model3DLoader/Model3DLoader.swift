@@ -30,13 +30,10 @@ class Model3DLoader {
     
     func loadEntity() async -> Entity? {
 
-        print("asset:", asset)
-        print("asset.boundingBox:", asset.boundingBox, "\n")
-
         asset.objects.enumerated().forEach { i, object in
             let children = object.children
             let components = object.components
-
+            
             print("i: \(i)\n - object: \(object)\n - children: \(children)")
             for j in 0..<children.count {
                 print("  j: \(j)")
@@ -67,20 +64,8 @@ class Model3DLoader {
 
 }
 
+
 extension MDLAsset {
-    /// The array of `MDLObject` found in this `MDLAsset`
-    var objects: [MDLObject] {
-        var result = [MDLObject]()
-        for i in 0 ..< self.count {
-            result.append(self.object(at: i))
-        }
-        return result
-    }
-    
-    /// The `MDLMesh` instances inside of the `objects` array
-    var meshes: [MDLMesh] {
-        objects.compactMap { $0 as? MDLMesh }
-    }
     /*
     var lowLevelMeshDescriptor: LowLevelMesh.Descriptor? {
         self.vertexDescriptor?.attributes
@@ -110,4 +95,10 @@ extension MDLAsset {
         return nil
     }
      */
+}
+
+extension MDLMesh {
+    func printSummary() {
+        
+    }
 }
