@@ -7,22 +7,44 @@
 
 import SwiftUI
 import RealityKit
+import ModelIO
 
 struct ContentView: View {
+    @State var model: Model3DLoader?
+    @State var entity: Entity?
+    
     var body: some View {
-        RealityView { content in
-            content.camera = .virtual
-            
-            let model = Model3DLoader(filename: "susanne", fileExtension: "stl")
-            let entity = await model.loadEntity()
-            print(model.url)
-            print(entity)
+        NavigationStack {
+            VStack {
+                RealityView { content in
+                    content.camera = .virtual
+                    
+                    model = Model3DLoader(filename: "susanne", fileExtension: "stl")
+                    entity = await model?.loadEntity()
+                }
+                List {
+                    if let model {
+                        Section("Model") {
+                            contentStack("url.absoluteString", content: model.url.absoluteString)
+                            contentStack("asset", content: "\(model.asset)")
+                            contentStack("asset.count", content: String(model.asset.count))
+                            contentStack("asset.boundingBox", content: "\(model.asset.boundingBox)")
+                            contentStack("asset.meshes", content: "\(model.asset.meshes)")
+                        }
+                    }
+                    if let entity {
+                        Text(entity.debugDescription)
+                    }
+                }
+            }
+            .navigationTitle("Model3DLoader")
         }
-        .overlay(alignment: .top) {
-            Text("Model3DLoader")
-                .font(.largeTitle)
-                .fontWeight(.black)
-                .glassEffect()
+    }
+    
+    private func contentStack(_ label: String, content: String) -> some View {
+        VStack(alignment: .leading) {
+            Text(label).foregroundColor(.secondary)
+            Text(content).font(.caption)
         }
     }
 }
