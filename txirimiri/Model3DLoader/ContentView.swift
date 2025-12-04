@@ -24,7 +24,6 @@ struct ContentView: View {
                     
                     print("printSummaryz")
                     model?.asset.meshes.first?.printSummary()
-                    model?.asset.meshes.first?.printVertexPositions()
                 }
                 List {
                     if let model {
@@ -37,6 +36,7 @@ struct ContentView: View {
                             contentStack("asset.meshes.first.positionAttribute", content: "\(model.asset.meshes.first?.positionAttribute)")
                             contentStack("asset.meshes.first.positionBuffer", content: "\(model.asset.meshes.first?.positionBuffer)")
                             contentStack("asset.meshes.first.vertexBufferLayout", content: "\(model.asset.meshes.first?.vertexBufferLayout)")
+                            contentStack("asset.meshes.first.positions.count", content: "\(model.asset.meshes.first?.positions.count)")
                         }
                     }
                     if let entity {

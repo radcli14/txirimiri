@@ -65,38 +65,6 @@ class Model3DLoader {
 }
 
 
-extension MDLAsset {
-    /*
-    var lowLevelMeshDescriptor: LowLevelMesh.Descriptor? {
-        self.vertexDescriptor?.attributes
-        /*
-         init(
-             vertexCapacity: Int = 0,
-             vertexAttributes: [LowLevelMesh.Attribute] = [Attribute](),
-             vertexLayouts: [LowLevelMesh.Layout] = [Layout](),
-             indexCapacity: Int = 0,
-             indexType: MTLIndexType = MTLIndexType.uint32
-         )
-         */
-        return nil
-    }
-    
-    var lowLevelMesh: LowLevelMesh? {
-        guard let lowLevelMeshDescriptor else { return nil }
-        return try? .init(descriptor: lowLevelMeshDescriptor)
-    }
-    
-    var meshResource: MeshResource? {
-        guard let lowLevelMesh else { return nil }
-        return try? .init(from: lowLevelMesh)
-    }
-    
-    var rkMaterial: Material? {
-        return nil
-    }
-     */
-}
-
 extension MDLMesh {
     var vertexDescriptorAttributes: [MDLVertexAttribute] {
         vertexDescriptor.attributes.compactMap {
@@ -120,26 +88,38 @@ extension MDLMesh {
         return vertexDescriptor.layouts[index] as? MDLVertexBufferLayout
     }
     
-    var vertexData: MeshBuffer<Data>? {
-        guard let positionBufferData = positionBuffer as? MDLMeshBufferData,
-                let vertexBufferLayout, let positionAttribute
-        else { return nil }
+    var positions: [SIMD3<Float>] {
+        guard let positionBuffer, let vertexBufferLayout, let positionAttribute else {
+            return []
+        }
+        // Get the data that informs how to unpack the buffer
+        let stride = vertexBufferLayout.stride
+        let rawPointer = positionBuffer.map().bytes
+        let vertexCount = positionBuffer.length / stride
+        let offset = positionAttribute.offset
+
+        var result = [SIMD3<Float>]()
+        for i in 0 ..< vertexCount  {
+            // Get the pointer associated with this vertex
+            let vertexStart = rawPointer.advanced(by: i * stride)
+            let positionStart = vertexStart.advanced(by: offset)
+            let floatPointer = positionStart.assumingMemoryBound(to: Float.self)
+            
+            // Unpack this vertex position into the SIMD3<Float>
+            result.append(.init(
+                x: floatPointer[0],
+                y: floatPointer[1],
+                z: floatPointer[2]
+            ))
+        }
         
-        let rawData = positionBufferData.data as Data
-        
-        /*return MeshBuffer<Data>(
-            data: rawData,
-            stride: vertexBufferLayout.stride,
-            offset: positionAttribute.offset
-        )*/
-        
-        return nil // TODO
+        return result
     }
     
-    var descriptors: [MeshDescriptor] {
-        let resource = MeshDescriptor()
-        //resource.buffers //= [self.vertexBuffers]
-        return []
+    var descriptor: MeshDescriptor {
+        var descriptor = MeshDescriptor(name: "me")
+        descriptor.positions = .init(positions)
+        return descriptor
     }
     
     var submeshArray: [MDLSubmesh] {
@@ -159,48 +139,5 @@ extension MDLMesh {
         //submesh.
         //guard let buffer = vertexBuffers.first else { return }
         //buffer.
-    }
-    
-    /// Safely prints the numeric values of all vertex positions (x, y, z).
-    func printVertexPositions() {
-        guard let buffer = self.positionBuffer,
-              let layout = self.vertexBufferLayout,
-              let attribute = self.positionAttribute
-        else {
-            print("Error: Missing required position components (buffer, layout, or attribute).")
-            return
-        }
-
-        let stride = layout.stride
-        let offset = attribute.offset
-        
-        // 1. Map the buffer memory to a raw pointer.
-        // This is necessary to access the data directly in memory.
-        let rawPointer = buffer.map().bytes
-        
-        // 2. Calculate the total number of vertices.
-        let vertexCount = buffer.length / stride
-        
-        print("--- Vertex Positions (Total: \(vertexCount)) ---")
-        
-        for i in 0..<vertexCount {
-            // Calculate the start of the current vertex's data block.
-            let vertexStart = rawPointer.advanced(by: i * stride)
-            
-            // Calculate the start of the position data within the vertex block (applying offset).
-            let positionStart = vertexStart.advanced(by: offset)
-            
-            // Treat the pointer at positionStart as a pointer to the first float (X-component).
-            // Positions are typically stored as 3 consecutive 32-bit floats (x, y, z).
-            let floatPointer = positionStart.assumingMemoryBound(to: Float.self)
-            
-            let x = floatPointer[0]
-            let y = floatPointer[1]
-            let z = floatPointer[2]
-            
-            print("Vertex \(i): X=\(x), Y=\(y), Z=\(z)")
-        }
-        
-        print("---------------------------------")
     }
 }
