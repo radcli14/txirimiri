@@ -10,11 +10,11 @@ import ModelIO
 import RealityKit
 
 // TODO:
-// - Get vertex positions from the asset
-// - Get polygon indices from the asset
-// - Generate an array of MeshResource
-// - Get materials from the asset
-// - Generate a ModelEntity using the array of MeshResrouce
+// - [x] Get vertex positions from the asset
+// - [ ] Get polygon indices from the asset
+// - [x] Generate an array of MeshResource
+// - [ ] Get materials from the asset
+// - [ ] Generate a ModelEntity using the array of MeshResource
 
 /// Handles processing an asset created using `ModelIO` to create a `RealityKit.Entity`
 class Model3DLoader {
@@ -28,62 +28,52 @@ class Model3DLoader {
         asset = MDLAsset(url: url)
     }
     
-    func loadEntity() async -> Entity? {
+    func loadEntity() async -> ModelEntity? {
+        await asset.getModelEntity()
+    }
+}
 
-        asset.objects.enumerated().forEach { i, object in
-            let children = object.children
-            let components = object.components
-            
-            print("i: \(i)\n - object: \(object)\n - children: \(children)")
-            for j in 0..<children.count {
-                print("  j: \(j)")
-            }
-            /*for j in object.components.indices {
-                let component = object.components[j]
-                print("  j: \(j), componet: \(component)")
-            }*/
-            if let mesh = object as? MDLMesh {
-                print("Success! The object is an MDLMesh.")
-                // Use the mesh here
-                //mesh.
-                for j in 0..<mesh.vertexBuffers.count {
-                    let buffer = mesh.vertexBuffers[j]
-                    print("  j: \(j)\n   - vertexBuffers: \(buffer)\n   - submeshes: \(mesh.submeshes?.count)")
-                    guard let submeshes = mesh.submeshes else { continue }
-                    for k in 0..<submeshes.count {
-                        guard let submesh = submeshes[k] as? MDLSubmesh else { continue }
-                        print("    k: \(k)", submesh.indexBuffer)
-                    }
-                }
-            } else {
-                print("The object is a container or another type of MDLObject.")
-            }
+
+extension MDLAsset {
+    private var meshDescriptors: [MeshDescriptor] {
+        meshes.map { $0.descriptor }
+    }
+    
+    private func getMeshResource() async -> MeshResource? {
+        do {
+            return try await MeshResource(from: meshDescriptors)
+        } catch {
+            print("MDLAsset.getMeshResource() failed because \(error.localizedDescription)")
+            return nil
         }
-        return nil
     }
 
+    func getModelEntity() async -> ModelEntity? {
+        guard let meshResource = await getMeshResource() else { return nil }
+        return ModelEntity(mesh: meshResource)
+    }
 }
 
 
 extension MDLMesh {
-    var vertexDescriptorAttributes: [MDLVertexAttribute] {
+    private var vertexDescriptorAttributes: [MDLVertexAttribute] {
         vertexDescriptor.attributes.compactMap {
             $0 as? MDLVertexAttribute
         }
     }
     
-    var positionAttribute: MDLVertexAttribute? {
+    private var positionAttribute: MDLVertexAttribute? {
         return vertexDescriptorAttributes.first {
             $0.name == MDLVertexAttributePosition
         }
     }
     
-    var positionBuffer: MDLMeshBuffer? {
+    private var positionBuffer: MDLMeshBuffer? {
         guard let index = positionAttribute?.bufferIndex else { return nil }
         return vertexBuffers[index]
     }
     
-    var vertexBufferLayout: MDLVertexBufferLayout? {
+    private var vertexBufferLayout: MDLVertexBufferLayout? {
         guard let index = positionAttribute?.bufferIndex else { return nil }
         return vertexDescriptor.layouts[index] as? MDLVertexBufferLayout
     }
@@ -116,9 +106,11 @@ extension MDLMesh {
         return result
     }
     
+    // TODO: add primitives
     var descriptor: MeshDescriptor {
         var descriptor = MeshDescriptor(name: "me")
         descriptor.positions = .init(positions)
+        descriptor.primitives = .triangles([0, 1, 2])
         return descriptor
     }
     
@@ -131,13 +123,5 @@ extension MDLMesh {
             }
         }
         return result
-    }
-    
-    func printSummary() {
-        guard let submesh = submeshArray.first else { return }
-        print("MDLMesh submesh", submesh, submesh.indexCount, submesh.indexBuffer.length)
-        //submesh.
-        //guard let buffer = vertexBuffers.first else { return }
-        //buffer.
     }
 }

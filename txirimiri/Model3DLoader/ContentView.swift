@@ -11,7 +11,7 @@ import ModelIO
 
 struct ContentView: View {
     @State var model: Model3DLoader?
-    @State var entity: Entity?
+    @State var entity: ModelEntity?
     
     var body: some View {
         NavigationStack {
@@ -22,8 +22,9 @@ struct ContentView: View {
                     model = Model3DLoader(filename: "susanne", fileExtension: "stl")
                     entity = await model?.loadEntity()
                     
-                    print("printSummaryz")
-                    model?.asset.meshes.first?.printSummary()
+                    guard let entity else { return }
+                    content.add(entity)
+
                 }
                 List {
                     if let model {
@@ -33,14 +34,16 @@ struct ContentView: View {
                             contentStack("asset.count", content: String(model.asset.count))
                             contentStack("asset.boundingBox", content: "\(model.asset.boundingBox)")
                             contentStack("asset.meshes", content: "\(model.asset.meshes)")
-                            contentStack("asset.meshes.first.positionAttribute", content: "\(model.asset.meshes.first?.positionAttribute)")
-                            contentStack("asset.meshes.first.positionBuffer", content: "\(model.asset.meshes.first?.positionBuffer)")
-                            contentStack("asset.meshes.first.vertexBufferLayout", content: "\(model.asset.meshes.first?.vertexBufferLayout)")
-                            contentStack("asset.meshes.first.positions.count", content: "\(model.asset.meshes.first?.positions.count)")
+                            if let mesh = model.asset.meshes.first {
+                                contentStack("mesh.positions.count", content: "\(mesh.positions.count)")
+                            }
                         }
                     }
                     if let entity {
-                        Text(entity.debugDescription)
+                        Section("Entity") {
+                            contentStack("entity.debugDescription", content: entity.debugDescription)
+                            contentStack("entity.model.mesh.bounds", content: "\(entity.model?.mesh.bounds)")
+                        }
                     }
                 }
             }
