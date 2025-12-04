@@ -21,6 +21,10 @@ struct ContentView: View {
                     
                     model = Model3DLoader(filename: "susanne", fileExtension: "stl")
                     entity = await model?.loadEntity()
+                    
+                    print("printSummaryz")
+                    model?.asset.meshes.first?.printSummary()
+                    model?.asset.meshes.first?.printVertexPositions()
                 }
                 List {
                     if let model {
@@ -30,6 +34,9 @@ struct ContentView: View {
                             contentStack("asset.count", content: String(model.asset.count))
                             contentStack("asset.boundingBox", content: "\(model.asset.boundingBox)")
                             contentStack("asset.meshes", content: "\(model.asset.meshes)")
+                            contentStack("asset.meshes.first.positionAttribute", content: "\(model.asset.meshes.first?.positionAttribute)")
+                            contentStack("asset.meshes.first.positionBuffer", content: "\(model.asset.meshes.first?.positionBuffer)")
+                            contentStack("asset.meshes.first.vertexBufferLayout", content: "\(model.asset.meshes.first?.vertexBufferLayout)")
                         }
                     }
                     if let entity {
