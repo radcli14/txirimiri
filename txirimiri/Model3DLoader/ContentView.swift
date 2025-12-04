@@ -20,12 +20,18 @@ struct ContentView: View {
                     content.camera = .virtual
                     
                     model = Model3DLoader(filename: "susanne", fileExtension: "stl")
+                    
+                    model?.asset.meshes.first?.submeshArray.first?.printSummary()
                     entity = await model?.loadEntity()
                     
                     guard let entity else { return }
-                    content.add(entity)
+                    let anchor = AnchorEntity(world: .zero)
+                    content.add(anchor)
+                    anchor.addChild(entity)
 
                 }
+                .realityViewCameraControls(.orbit)
+                
                 List {
                     if let model {
                         Section("Model") {
@@ -36,6 +42,10 @@ struct ContentView: View {
                             contentStack("asset.meshes", content: "\(model.asset.meshes)")
                             if let mesh = model.asset.meshes.first {
                                 contentStack("mesh.positions.count", content: "\(mesh.positions.count)")
+                                contentStack("mesh.submeshes.count", content: "\(mesh.submeshArray.count)")
+                                if let submesh = mesh.submeshArray.first {
+                                    
+                                }
                             }
                         }
                     }
