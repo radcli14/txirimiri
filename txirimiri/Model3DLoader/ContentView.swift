@@ -19,7 +19,7 @@ struct ContentView: View {
                 RealityView { content in
                     content.camera = .virtual
                     
-                    model = Model3DLoader(filename: "susanne", fileExtension: "stl")
+                    model = Model3DLoader(filename: "shiny", fileExtension: "obj")
                     
                     model?.asset.meshes.first?.submeshArray.first?.printSummary()
                     entity = await model?.loadEntity()
@@ -44,7 +44,7 @@ struct ContentView: View {
                                 contentStack("mesh.positions.count", content: "\(mesh.positions.count)")
                                 contentStack("mesh.submeshes.count", content: "\(mesh.submeshArray.count)")
                                 if let submesh = mesh.submeshArray.first {
-                                    
+                                    contentStack("submesh.material", content:  "\(submesh.material)")
                                 }
                             }
                         }

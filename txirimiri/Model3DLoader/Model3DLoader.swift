@@ -8,10 +8,11 @@
 import Foundation
 import ModelIO
 import RealityKit
+internal import UIKit
 
 // TODO:
 // - [x] Get vertex positions from the asset
-// - [ ] Get polygon indices from the asset
+// - [x] Get polygon indices from the asset
 // - [x] Generate an array of MeshResource
 // - [ ] Get materials from the asset
 // - [x] Generate a ModelEntity using the array of MeshResource
@@ -47,10 +48,22 @@ extension MDLAsset {
             return nil
         }
     }
+    
+    var materials: [any RealityKit.Material] {
+        meshes.flatMap { mesh in
+            mesh.submeshArray.compactMap { submesh in
+                submesh.pbrMaterial
+            }
+        }
+    }
 
     func getModelEntity() async -> ModelEntity? {
         guard let meshResource = await getMeshResource() else { return nil }
-        return ModelEntity(mesh: meshResource)//, materials: [SimpleMaterial()])
+        return ModelEntity(mesh: meshResource, materials: materials)
+    }
+    
+    func summary() {
+        //meshes.map { material}
     }
 }
 
@@ -108,7 +121,7 @@ extension MDLMesh {
     
     // TODO: add primitives
     var descriptor: MeshDescriptor {
-        var descriptor = MeshDescriptor(name: "me")
+        var descriptor = MeshDescriptor(name: name)
         descriptor.positions = .init(positions)
         let indices = submeshArray.compactMap { $0.indices }.flatMap { $0 }
         
@@ -128,7 +141,11 @@ extension MDLMesh {
     }
 }
 
+/// Note: A single `MDLMesh` can be composed of one or more `MDLSubmesh` instances. Each submesh represents a distinct section of the geometry that uses a single material.
 extension MDLSubmesh {
+    
+    // MARK: - Mesh Indices
+    
     var indexData: Data {
         return Data(bytes: indexBuffer.map().bytes, count: indexBuffer.length)
     }
@@ -168,17 +185,95 @@ extension MDLSubmesh {
     }
     
     var primitives: MeshDescriptor.Primitives? {
+        var geometryString = ""
         switch geometryType {
         case .triangles: return .triangles(indices)
         case .quads: return .trianglesAndQuads(triangles: [], quads: indices)
-        case .variableTopology: return nil
-        case .triangleStrips: return nil
-        case .lines: return nil
-        case .points: return nil
+        case .variableTopology: geometryString = "variableTopology"
+        case .triangleStrips: geometryString = "triangleStrips"
+        case .lines: geometryString = "lines"
+        case .points: geometryString = "points"
         @unknown default:
-            print("MDLSubmesh geometryType: \(geometryType) is unknown")
-            return nil
+            geometryString = "???"
         }
+        print("MDLSubmesh geometryType: \(geometryString) is unknown or not handled, returning nil")
+        return nil
+    }
+    
+    // MARK: - Material
+    
+    // TODO: Lots here, need to complete the import settings for materials
+    
+    /// Attempts to extract the Base Color, prioritizing texture, then numeric value.
+    var pbrBaseColor: PhysicallyBasedMaterial.BaseColor? {
+        let baseColorProperty = material?.property(with: .baseColor)
+        
+        // Check for a texture map (file reference), or a numeric value.
+        if let _ = baseColorProperty?.textureSamplerValue {
+            // TODO: build from texture sampler
+            return nil
+        } else if let color = baseColorProperty?.float4Value {
+            return .init(tint: .init(
+                red: CGFloat(color[0]),
+                green: CGFloat(color[1]),
+                blue: CGFloat(color[2]),
+                alpha: CGFloat(color[3])
+            ))
+        }
+        return nil
+    }
+    
+    var pbrNormal: PhysicallyBasedMaterial.Normal? {
+        return nil
+    }
+    
+    var pbrRoughness: PhysicallyBasedMaterial.Roughness? {
+        // TODO: add some better logic for when to use roughness vs specular, I'm using it the way I am here because it seemed lost in the Blender .obj file export
+        let roughnessProperty = material?.property(with: .roughness)
+        let specularProperty = material?.property(with: .specularExponent)
+        if let value = specularProperty?.floatValue {
+            let convertedRoughness = sqrt(2.0 / (value + 2.0))
+            print("specularExponent: \(value), convertedRoughness: \(convertedRoughness)")
+            return .init(floatLiteral: convertedRoughness)
+        } else if let _ = roughnessProperty?.textureSamplerValue {
+            // TODO: build from texture sampler
+        } else if let value = roughnessProperty?.floatValue {
+            print("roughness: \(value)")
+            return .init(floatLiteral: value)
+        }
+        return nil
+    }
+    
+    var pbrMetallic: PhysicallyBasedMaterial.Metallic? {
+        let metallicProperty = material?.property(with: .metallic)
+        if let _ = metallicProperty?.textureSamplerValue {
+            // TODO: build from texture sampler
+        } else if let value = metallicProperty?.floatValue {
+            print("metallic: \(value)")
+            return .init(floatLiteral: value)
+        }
+        return nil
+    }
+    
+    /// The `PhysicallyBasedMaterial` representation of the material included in the submesh
+    var pbrMaterial: PhysicallyBasedMaterial? {
+        guard material != nil else { return nil }
+        
+        var pbrMaterial = PhysicallyBasedMaterial()
+        if let pbrBaseColor {
+            pbrMaterial.baseColor = pbrBaseColor
+        }
+        if let pbrNormal {
+            pbrMaterial.normal = pbrNormal
+        }
+        if let pbrRoughness {
+            pbrMaterial.roughness = pbrRoughness
+        }
+        if let pbrMetallic {
+            pbrMaterial.metallic = pbrMetallic
+        }
+
+        return pbrMaterial
     }
     
     func printSummary() {
@@ -186,7 +281,7 @@ extension MDLSubmesh {
         print(" - indexType: \(indexType)")
         print(" - indexData: \(indexData)")
         print(" - geometryType: triangles? \(geometryType == MDLGeometryType.triangles)")
-        print(" - primitives: \(primitives)")
+        //print(" - primitives: \(primitives)")
         print(" - indexCount: \(indexCount)")
         
         let indices = self.indices
@@ -207,5 +302,9 @@ extension MDLSubmesh {
                 print("   Triangle \(i): [\(v0), \(v1), \(v2)]")
             }
         }
+        
+        print(" - material: \(material)")
     }
 }
+
+
