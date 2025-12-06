@@ -7,64 +7,20 @@
 
 import SwiftUI
 import RealityKit
-import ModelIO
+import ModelIO_to_RealityKit
 
 struct ContentView: View {
-    @State var model: Model3DLoader?
-    @State var entity: ModelEntity?
-    
     var body: some View {
         NavigationStack {
-            VStack {
-                RealityView { content in
-                    content.camera = .virtual
-                    
-                    model = Model3DLoader(filename: "shiny", fileExtension: "obj")
-                    
-                    model?.asset.meshes.first?.submeshArray.first?.printSummary()
-                    entity = await model?.loadEntity()
-                    
-                    guard let entity else { return }
-                    let anchor = AnchorEntity(world: .zero)
-                    content.add(anchor)
-                    anchor.addChild(entity)
-
-                }
-                .realityViewCameraControls(.orbit)
-                
-                List {
-                    if let model {
-                        Section("Model") {
-                            contentStack("url.absoluteString", content: model.url.absoluteString)
-                            contentStack("asset", content: "\(model.asset)")
-                            contentStack("asset.count", content: String(model.asset.count))
-                            contentStack("asset.boundingBox", content: "\(model.asset.boundingBox)")
-                            contentStack("asset.meshes", content: "\(model.asset.meshes)")
-                            if let mesh = model.asset.meshes.first {
-                                contentStack("mesh.positions.count", content: "\(mesh.positions.count)")
-                                contentStack("mesh.submeshes.count", content: "\(mesh.submeshArray.count)")
-                                if let submesh = mesh.submeshArray.first {
-                                    contentStack("submesh.material", content:  "\(submesh.material)")
-                                }
-                            }
-                        }
-                    }
-                    if let entity {
-                        Section("Entity") {
-                            contentStack("entity.debugDescription", content: entity.debugDescription)
-                            contentStack("entity.model.mesh.bounds", content: "\(entity.model?.mesh.bounds)")
-                        }
-                    }
+            RealityView { content in
+                let model = Model3DLoader(filename: "shiny", fileExtension: "obj")
+                let entity = await model.loadEntity()
+                if let entity {
+                    content.add(entity)
                 }
             }
+            .realityViewCameraControls(.orbit)
             .navigationTitle("Model3DLoader")
-        }
-    }
-    
-    private func contentStack(_ label: String, content: String) -> some View {
-        VStack(alignment: .leading) {
-            Text(label).foregroundColor(.secondary)
-            Text(content).font(.caption)
         }
     }
 }

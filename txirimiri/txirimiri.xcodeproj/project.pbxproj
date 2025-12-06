@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		8AA795D12EE42C3E00081B0C /* ModelIO-to-RealityKit in Frameworks */ = {isa = PBXBuildFile; productRef = 8AA795D02EE42C3E00081B0C /* ModelIO-to-RealityKit */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		8A1517792E894BB5000266B4 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -118,6 +122,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				8AA795D12EE42C3E00081B0C /* ModelIO-to-RealityKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -234,6 +239,7 @@
 			);
 			name = Model3DLoader;
 			packageProductDependencies = (
+				8AA795D02EE42C3E00081B0C /* ModelIO-to-RealityKit */,
 			);
 			productName = Model3DLoader;
 			productReference = 8ABE71CC2EB666BB00029749 /* Model3DLoader.app */;
@@ -274,6 +280,9 @@
 			);
 			mainGroup = 8A15175E2E894BB3000266B4;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				8AA795CF2EE42C3E00081B0C /* XCRemoteSwiftPackageReference "ModelIO-to-RealityKit" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 8A1517682E894BB3000266B4 /* Products */;
 			projectDirPath = "";
@@ -733,6 +742,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		8AA795CF2EE42C3E00081B0C /* XCRemoteSwiftPackageReference "ModelIO-to-RealityKit" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/radcli14/ModelIO-to-RealityKit";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.0.1;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		8AA795D02EE42C3E00081B0C /* ModelIO-to-RealityKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 8AA795CF2EE42C3E00081B0C /* XCRemoteSwiftPackageReference "ModelIO-to-RealityKit" */;
+			productName = "ModelIO-to-RealityKit";
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 8A15175F2E894BB3000266B4 /* Project object */;
 }
