@@ -38,28 +38,12 @@ struct ContentView: View {
     }
     
     func getEntityFromDAE() async -> ModelEntity? {
-        print("getEntityFromDAE")
-        guard let scene = SCNScene(named: "shiny.dae") else { return nil }
-        let node = scene.rootNode
+        guard let scene = SCNScene(named: "shiny.dae") else { 
+            return nil
+        }
         
-        print("- scene:", scene)
-        print("- node:", node)
-        print("- elementCount:", node.geometry?.elementCount ?? 0)
-        print("- node.childNodes:", node.childNodes)
-
-        guard let mesh = node.childNodes.first, let geometry = mesh.geometry else { return nil }
-        
-        print("- geometry:", geometry)
-        geometry.unpack()
-        
-        guard let resource = await geometry.getMeshResource() else { return nil }
-
-        print("- resource:", resource)
-        
-        return ModelEntity(
-            mesh: resource,
-            materials: geometry.rkMaterials
-        )
+        // Use the new convenience method
+        return await ModelEntity.fromSCNScene(scene)
     }
 }
 
