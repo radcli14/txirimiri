@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		8AA795D12EE42C3E00081B0C /* ModelIO-to-RealityKit in Frameworks */ = {isa = PBXBuildFile; productRef = 8AA795D02EE42C3E00081B0C /* ModelIO-to-RealityKit */; };
+		8AA795D32EE44B2800081B0C /* ModelIO-to-RealityKit in Frameworks */ = {isa = PBXBuildFile; productRef = 8AA795D22EE44B2800081B0C /* ModelIO-to-RealityKit */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -101,6 +102,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				8AA795D32EE44B2800081B0C /* ModelIO-to-RealityKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -171,6 +173,7 @@
 			);
 			name = txirimiri;
 			packageProductDependencies = (
+				8AA795D22EE44B2800081B0C /* ModelIO-to-RealityKit */,
 			);
 			productName = txirimiri;
 			productReference = 8A1517672E894BB3000266B4 /* txirimiri.app */;
@@ -756,6 +759,11 @@
 
 /* Begin XCSwiftPackageProductDependency section */
 		8AA795D02EE42C3E00081B0C /* ModelIO-to-RealityKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 8AA795CF2EE42C3E00081B0C /* XCRemoteSwiftPackageReference "ModelIO-to-RealityKit" */;
+			productName = "ModelIO-to-RealityKit";
+		};
+		8AA795D22EE44B2800081B0C /* ModelIO-to-RealityKit */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 8AA795CF2EE42C3E00081B0C /* XCRemoteSwiftPackageReference "ModelIO-to-RealityKit" */;
 			productName = "ModelIO-to-RealityKit";
