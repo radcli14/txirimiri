@@ -9,7 +9,10 @@ import SwiftUI
 import RealityKit
 import SceneKit
 import ModelIO
+
+import DAE_to_RealityKit
 import ModelIO_to_RealityKit
+
 
 struct ContentView: View {
     var body: some View {

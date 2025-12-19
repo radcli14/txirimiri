@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		8A2EB7AE2EF5990F00ECFAA6 /* DAE-to-RealityKit in Frameworks */ = {isa = PBXBuildFile; productRef = 8A2EB7AD2EF5990F00ECFAA6 /* DAE-to-RealityKit */; };
 		8AA795D12EE42C3E00081B0C /* ModelIO-to-RealityKit in Frameworks */ = {isa = PBXBuildFile; productRef = 8AA795D02EE42C3E00081B0C /* ModelIO-to-RealityKit */; };
 		8AA795D32EE44B2800081B0C /* ModelIO-to-RealityKit in Frameworks */ = {isa = PBXBuildFile; productRef = 8AA795D22EE44B2800081B0C /* ModelIO-to-RealityKit */; };
 /* End PBXBuildFile section */
@@ -124,6 +125,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				8A2EB7AE2EF5990F00ECFAA6 /* DAE-to-RealityKit in Frameworks */,
 				8AA795D12EE42C3E00081B0C /* ModelIO-to-RealityKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -243,6 +245,7 @@
 			name = Model3DLoader;
 			packageProductDependencies = (
 				8AA795D02EE42C3E00081B0C /* ModelIO-to-RealityKit */,
+				8A2EB7AD2EF5990F00ECFAA6 /* DAE-to-RealityKit */,
 			);
 			productName = Model3DLoader;
 			productReference = 8ABE71CC2EB666BB00029749 /* Model3DLoader.app */;
@@ -285,6 +288,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				8AA795CF2EE42C3E00081B0C /* XCRemoteSwiftPackageReference "ModelIO-to-RealityKit" */,
+				8A2EB7AC2EF5990F00ECFAA6 /* XCRemoteSwiftPackageReference "DAE-to-RealityKit" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 8A1517682E894BB3000266B4 /* Products */;
@@ -747,6 +751,14 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		8A2EB7AC2EF5990F00ECFAA6 /* XCRemoteSwiftPackageReference "DAE-to-RealityKit" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/radcli14/DAE-to-RealityKit";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.0.0;
+			};
+		};
 		8AA795CF2EE42C3E00081B0C /* XCRemoteSwiftPackageReference "ModelIO-to-RealityKit" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/radcli14/ModelIO-to-RealityKit";
@@ -758,6 +770,11 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		8A2EB7AD2EF5990F00ECFAA6 /* DAE-to-RealityKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 8A2EB7AC2EF5990F00ECFAA6 /* XCRemoteSwiftPackageReference "DAE-to-RealityKit" */;
+			productName = "DAE-to-RealityKit";
+		};
 		8AA795D02EE42C3E00081B0C /* ModelIO-to-RealityKit */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 8AA795CF2EE42C3E00081B0C /* XCRemoteSwiftPackageReference "ModelIO-to-RealityKit" */;
