@@ -9,9 +9,65 @@ import Foundation
 import RealityKit
 import SceneKit
 
-extension SCNNode {
-    func unpack() {
+extension ModelEntity {
+    /// Create a ModelEntity from an SCNScene (such as one loaded from a .dae file)
+    @MainActor
+    static func fromSCNScene(_ scene: SCNScene) async -> ModelEntity? {
+        let rootNode = scene.rootNode
+        print("🔍 Converting SCNScene to ModelEntity...")
+        rootNode.unpack()
         
+        // Get all geometry nodes from the scene
+        let geometryNodes = rootNode.geometryNodes
+        guard !geometryNodes.isEmpty else {
+            print("⚠️ No geometry found in scene")
+            return nil
+        }
+        
+        print("📦 Found \(geometryNodes.count) geometry node(s)")
+        
+        // For now, let's handle the first geometry node
+        // TODO: Combine multiple geometries into a single entity
+        guard let firstGeometry = geometryNodes.first?.geometry else { return nil }
+        
+        firstGeometry.unpack()
+        
+        guard let meshResource = await firstGeometry.getMeshResource() else {
+            print("❌ Failed to create mesh resource")
+            return nil
+        }
+        
+        print("✅ Successfully created mesh resource")
+        
+        return ModelEntity(
+            mesh: meshResource,
+            materials: firstGeometry.rkMaterials
+        )
+    }
+}
+
+extension SCNNode {
+    /// Recursively find all geometry nodes in this node's hierarchy
+    var geometryNodes: [SCNNode] {
+        var result: [SCNNode] = []
+        if geometry != nil {
+            result.append(self)
+        }
+        for child in childNodes {
+            result.append(contentsOf: child.geometryNodes)
+        }
+        return result
+    }
+    
+    /// Debug method to print the node hierarchy
+    func unpack(indent: String = "") {
+        print("\(indent)📦 Node: \(name ?? "unnamed")")
+        if let geometry = geometry {
+            print("\(indent)  └─ Geometry: \(geometry.name ?? "unnamed"), \(geometry.elements.count) elements")
+        }
+        for child in childNodes {
+            child.unpack(indent: indent + "  ")
+        }
     }
 }
 
@@ -42,24 +98,43 @@ extension SCNGeometry {
         guard let positions = sources.vertices,
               let textureCoordinates = sources.textureCoordinates,
               let normals = sources.normals
-        else { return [] }
+        else { 
+            print("⚠️ Missing required geometry sources")
+            return [] 
+        }
 
+        print("📊 Geometry has \(positions.count) vertices, \(elements.count) elements")
+        
         // Map the mesh descriptors from the submeshes
-        return elements.map { element in
+        return elements.enumerated().map { (index, element) in
             // Initialize the descriptor with positions
-            var descriptor = MeshDescriptor(name: name ?? "dae")
+            var descriptor = MeshDescriptor(name: (name ?? "dae") + "_\(index)")
             descriptor.positions = .init(positions)
+            
+            print("  Element[\(index)]: \(element.primitiveCount) primitives")
             
             // Make sure the coordinates and normals are dimensionally consistent with the positions
             if textureCoordinates.count == positions.count {
                 descriptor.textureCoordinates = .init(textureCoordinates)
+            } else {
+                print("  ⚠️ Texture coordinate count (\(textureCoordinates.count)) doesn't match vertex count (\(positions.count))")
             }
+            
             if normals.count == positions.count {
                 descriptor.normals = .init(normals)
+            } else {
+                print("  ⚠️ Normal count (\(normals.count)) doesn't match vertex count (\(positions.count))")
             }
             
             // Add primitives from the submesh
-            descriptor.primitives = element.primitives
+            let primitives = element.primitives
+            if let triangles = primitives {
+                descriptor.primitives = triangles
+                print("  ✓ Added primitives successfully")
+            } else {
+                print("  ⚠️ Could not generate primitives for element[\(index)]")
+            }
+            
             return descriptor
         }
     }
@@ -115,55 +190,85 @@ extension SCNGeometrySource {
         semantic == .texcoord
     }
     
-    /// Unpacks the array of `SIMD3<Float>` from this source's `Data` //given a bufffer, layout, and attribute
+    /// Unpacks the array of `SIMD3<Float>` from this source's `Data`
     func getFloat3Array() -> [SIMD3<Float>] {
         guard hasFloat3Array else { return [] }
+        
+        // Validate data format expectations
+        guard componentsPerVector == 3,
+              dataStride >= MemoryLayout<Float>.stride * 3,
+              bytesPerComponent == MemoryLayout<Float>.stride else {
+            print("⚠️ Unexpected data format for Float3 array:")
+            print("   componentsPerVector: \(componentsPerVector) (expected 3)")
+            print("   dataStride: \(dataStride) (expected >= 12)")
+            print("   bytesPerComponent: \(bytesPerComponent) (expected 4)")
+            return []
+        }
+        
         var result = [SIMD3<Float>]()
+        result.reserveCapacity(vectorCount)
+        
         data.withUnsafeBytes { bufferPointer in
             guard let baseAddress = bufferPointer.baseAddress else { return }
             
-            // Get the pointer corresponding to the start of the vector data
-            let vertexPointer = baseAddress
-                .assumingMemoryBound(to: Float.self)
-                .advanced(by: dataOffset)
+            // Start at the data offset (in bytes)
+            let startPointer = baseAddress.advanced(by: dataOffset)
             
             // Loop through each of the vectors
             for i in 0 ..< vectorCount  {
-                // Get the pointer associated with this vertex
-                let floatPointer = vertexPointer.advanced(by: i * dataStride)
+                // Calculate byte offset for this vector (dataStride is in bytes)
+                let byteOffset = i * dataStride
+                let vectorPointer = startPointer
+                    .advanced(by: byteOffset)
+                    .assumingMemoryBound(to: Float.self)
 
                 // Unpack this vector data into the SIMD3<Float>
                 result.append(.init(
-                    x: floatPointer[0],
-                    y: floatPointer[1],
-                    z: floatPointer[2]
+                    x: vectorPointer[0],
+                    y: vectorPointer[1],
+                    z: vectorPointer[2]
                 ))
             }
         }
         return result
     }
     
-    /// Unpacks the array of `SIMD3<Float>` from this source's `Data` //given a bufffer, layout, and attribute
+    /// Unpacks the array of `SIMD2<Float>` from this source's `Data`
     func getFloat2Array() -> [SIMD2<Float>] {
         guard hasFloat2Array else { return [] }
+        
+        // Validate data format expectations
+        guard componentsPerVector == 2,
+              dataStride >= MemoryLayout<Float>.stride * 2,
+              bytesPerComponent == MemoryLayout<Float>.stride else {
+            print("⚠️ Unexpected data format for Float2 array:")
+            print("   componentsPerVector: \(componentsPerVector) (expected 2)")
+            print("   dataStride: \(dataStride) (expected >= 8)")
+            print("   bytesPerComponent: \(bytesPerComponent) (expected 4)")
+            return []
+        }
+        
         var result = [SIMD2<Float>]()
+        result.reserveCapacity(vectorCount)
+        
         data.withUnsafeBytes { bufferPointer in
             guard let baseAddress = bufferPointer.baseAddress else { return }
             
-            // Get the pointer corresponding to the start of the vector data
-            let vertexPointer = baseAddress
-                .assumingMemoryBound(to: Float.self)
-                .advanced(by: dataOffset)
+            // Start at the data offset (in bytes)
+            let startPointer = baseAddress.advanced(by: dataOffset)
             
             // Loop through each of the vectors
             for i in 0 ..< vectorCount  {
-                // Get the pointer associated with this vertex
-                let floatPointer = vertexPointer.advanced(by: i * dataStride)
+                // Calculate byte offset for this vector (dataStride is in bytes)
+                let byteOffset = i * dataStride
+                let vectorPointer = startPointer
+                    .advanced(by: byteOffset)
+                    .assumingMemoryBound(to: Float.self)
 
-                // Unpack this vector data into the SIMD3<Float>
+                // Unpack this vector data into the SIMD2<Float>
                 result.append(.init(
-                    x: floatPointer[0],
-                    y: floatPointer[1],
+                    x: vectorPointer[0],
+                    y: vectorPointer[1]
                 ))
             }
         }
@@ -215,7 +320,10 @@ extension SCNGeometryElement {
             }
         }
         
-        print("    > result.count:", result.count)
+        print("    > indices.count:", result.count)
+        if !result.isEmpty {
+            print("    > indices range: \(result.min()!) ... \(result.max()!)")
+        }
         return result
     }
     
