@@ -18,21 +18,20 @@ struct ContentView: View {
     var body: some View {
         NavigationStack {
             VStack {
-                Text("RealityKit")
+                Text("RealityKit").font(.title)
                 RealityView { content in
-                    /*if let url = Bundle.main.url(forResource: "xyzBlock", withExtension: "obj"),
-                       let entity = await ModelEntity.fromMDLAsset(url: url) {
-                        content.add(entity)
-                    }*/
-                    if let entity = await getEntityFromDAE() {
+                    if let url = Bundle.main.url(forResource: "shiny", withExtension: "dae"),
+                       let entity = await ModelEntity.fromDAEAsset(url: url) {
                         content.add(entity)
                     }
                 }
                 .realityViewCameraControls(.orbit)
                 
-                Text("SceneKit")
+                Divider()
+                
+                Text("SceneKit").font(.title)
                 SceneView(
-                    scene: SCNScene(named: "shiny.dae"),
+                    scene: getScene(),
                     options: [.allowsCameraControl, .autoenablesDefaultLighting]
                 )
             }
@@ -40,13 +39,10 @@ struct ContentView: View {
         }
     }
     
-    func getEntityFromDAE() async -> ModelEntity? {
-        guard let scene = SCNScene(named: "shiny.dae") else { 
-            return nil
-        }
-        
-        // Use the new convenience method
-        return await ModelEntity.fromSCNScene(scene)
+    func getScene() -> SCNScene? {
+        guard let scene = SCNScene(named: "shiny.dae") else { return nil }
+        scene.background.contents = UIColor.systemBackground
+        return scene
     }
 }
 
