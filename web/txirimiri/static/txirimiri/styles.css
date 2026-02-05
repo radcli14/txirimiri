@@ -1,0 +1,4 @@
+.logo {
+    width: 256px;
+    filter: invert(1) sepia(1) hue-rotate(69deg) saturate(19) brightness(0.628);
+}

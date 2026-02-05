@@ -1,8 +1,10 @@
 {% extends "txirimiri/layout.html" %}
+{% load static %}
 
 {% block body %}
 
-<h1>Welcome to TXIRIMIRI</h1>
+<img src="{% static 'txirimiri/icon_outlined.png' %}" alt="TXIRIMIRI" class="logo">
+
 <p>This is the homepage of TXIRIMIRI. More features coming soon!</p>
 
 {% endblock %}
