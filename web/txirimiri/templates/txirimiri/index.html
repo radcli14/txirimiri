@@ -1,10 +1,24 @@
 {% extends "txirimiri/layout.html" %}
 {% load static %}
 
+{% block script %}
+<script src="https://cdn.apple-cloudkit.com/ck/2/cloudkit.js"></script>
+<script>    
+    const apiToken = "{{ cloudkit_api_token }}";
+</script>
+<script src="{% static 'txirimiri/cloud.js' %}"></script>
+{% endblock %}
+
 {% block body %}
 
 <img src="{% static 'txirimiri/icon_outlined.png' %}" alt="TXIRIMIRI" class="logo">
 
-<p>This is the homepage of TXIRIMIRI. More features coming soon!</p>
+<p>Select a model from the list</p>
+
+<div class="card">
+    <div class="card-body">
+        <h5 class="card-title">Select a model from the list</h5>
+    </div>
+</div>
 
 {% endblock %}
