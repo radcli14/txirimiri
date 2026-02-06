@@ -1,5 +1,6 @@
 "use strict";
 
+// Configure CloudKit
 CloudKit.configure({
     containers: [{
         containerIdentifier: 'iCloud.com.dcengineer.txirimiri',
@@ -11,51 +12,35 @@ CloudKit.configure({
     }]
 });
 
-const txirimiriContainer = CloudKit.getDefaultContainer();
-const database = txirimiriContainer.publicCloudDatabase;
+const container = CloudKit.getDefaultContainer();
+const database = container.publicCloudDatabase;
 
-console.log('CloudKit configured and database initialized.');
-console.log('Container:', txirimiriContainer);
-console.log('Database:', database);
-
-function fetchAllNamesAndDescriptions() {
-    const query = { recordType: 'Model3D' };
-    const options = {
-        desiredKeys: ['name', 'description']
-    };
-    database.performQuery(query, options).then((response) => {
-        if (response.hasErrors) {
-            console.error(response.errors[0]);
-            return;
-        }
-        const items = response.records.map(record => ({
-            name: record.fields.name.value,
-            description: record.fields.description.value
-        }));
-        console.log(items);
-    });
-}
-
-fetchAllNamesAndDescriptions();
+console.log('CloudKit configured and initialized');
 
 document.addEventListener('DOMContentLoaded', () => {
     const modelList = document.getElementById('model-list');
+
+    // Query CloudKit for Model3D records
     const query = { recordType: 'Model3D' };
     const options = {
-        desiredKeys: ['name', 'description']
+        desiredKeys: ['name', 'description', 'extension']
     };
+
     database.performQuery(query, options).then((response) => {
         if (response.hasErrors) {
-            console.error(response.errors[0]);
+            console.error('Error fetching models:', response.errors[0]);
             return;
         }
+
         response.records.forEach(record => {
             const id = record.recordName;
             const name = record.fields.name.value;
             const description = record.fields.description.value;
+            const extension = record.fields.extension?.value || 'usdz';
             const item = document.createElement('a');
             item.className = 'list-group-item list-group-item-action';
             item.innerHTML = generateHTML(name, description, id);
+            item.dataset.extension = extension;
             modelList.appendChild(item);
 
             // Asynchronously fetch and load the thumbnail
@@ -63,9 +48,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Add click handler to display model details
             item.addEventListener('click', () => {
-                displayModelDetails(id, name, description);
+                displayModelDetails(id, name, description, extension);
             });
         });
+    }).catch(error => {
+        console.error('Error fetching models:', error);
     });
 });
 
@@ -92,7 +79,6 @@ function fetchThumbnail(id, itemElement) {
     database.fetchRecords([id], options).then((response) => {
         if (response.hasErrors) {
             console.error('Error fetching thumbnail for', id, response.errors[0]);
-            // Keep the placeholder icon on error
             return;
         }
 
@@ -118,7 +104,7 @@ function fetchThumbnail(id, itemElement) {
     });
 }
 
-function displayModelDetails(id, name, description) {
+function displayModelDetails(id, name, description, extension) {
     const mainContent = document.querySelector('.main-content');
 
     // Get thumbnail URL from the list item if already loaded
@@ -139,6 +125,7 @@ function displayModelDetails(id, name, description) {
                 <div class="col-md-6">
                     <h2>${name}</h2>
                     <p class="lead">${description}</p>
+                    <p class="text-muted">Format: ${extension.toUpperCase()}</p>
                     <div id="model-status" class="mt-4">
                         <div class="d-flex align-items-center">
                             <div class="spinner-border text-primary me-3" role="status">
@@ -165,9 +152,10 @@ function fetchModel(id) {
     };
 
     database.fetchRecords([id], options).then((response) => {
+        const statusElement = document.getElementById('model-status');
+
         if (response.hasErrors) {
             console.error('Error fetching model for', id, response.errors[0]);
-            const statusElement = document.getElementById('model-status');
             if (statusElement) {
                 statusElement.innerHTML = `
                     <div class="alert alert-danger">
@@ -183,7 +171,6 @@ function fetchModel(id) {
 
         if (modelUrl) {
             console.log('Model downloaded:', modelUrl);
-            const statusElement = document.getElementById('model-status');
             if (statusElement) {
                 statusElement.innerHTML = `
                     <div class="alert alert-success">
@@ -193,7 +180,6 @@ function fetchModel(id) {
             }
             // TODO: Initialize 3D model viewer with modelUrl
         } else {
-            const statusElement = document.getElementById('model-status');
             if (statusElement) {
                 statusElement.innerHTML = `
                     <div class="alert alert-warning">
