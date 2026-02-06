@@ -8,6 +8,13 @@ This repository is a companion to a [tutorial on the DC-Engineer.com blog](https
 In that tutorial, I explain the methods and code used to generate a CloudKit container for 3D models and associated data, and then fetch that data at run time for viewing in augmented reality (AR).
 RealityKit and SwiftUI frameworks are used for 3D rendering and creation of native controls.
 
+## Web Version
+
+After writing the original article, I have learned about how to access the same iCloud data from JavaScript.
+I am hosting a simple website that demonstrates this, using `.glb`-formatted files, and Google's [ModelViewer](https://modelviewer.dev/).
+
+### [Txirimiri Web App](https://txirimiri.vercel.app/)
+
 ## Key Steps and Lessons-Learned
 
 If you follow along with the tutorial, you will be introduced to the following:
