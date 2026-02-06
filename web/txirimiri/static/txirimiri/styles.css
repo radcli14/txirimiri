@@ -1,10 +1,24 @@
 body {
     text-align: center;
+    margin: 0;
+    overflow: hidden;
 }
 
 .logo {
-    width: 256px;
+    width: 200px;
     filter: invert(1) sepia(1) hue-rotate(69deg) saturate(19) brightness(0.628);
+    display: block;
+    margin: 0 auto;
+}
+
+.main-content {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: #e9ecef;
+    z-index: 1;
 }
 
 .model-item-content {
@@ -52,4 +66,10 @@ body {
 
 .model-details .card-text {
     margin-bottom: 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }

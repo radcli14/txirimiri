@@ -3,7 +3,7 @@
 
 {% block script %}
 <script src="https://cdn.apple-cloudkit.com/ck/2/cloudkit.js"></script>
-<script>    
+<script>
     const apiToken = "{{ cloudkit_api_token }}";
 </script>
 <script src="{% static 'txirimiri/cloud.js' %}"></script>
@@ -11,13 +11,41 @@
 
 {% block body %}
 
-<img src="{% static 'txirimiri/icon_outlined.png' %}" alt="TXIRIMIRI" class="logo">
+<!-- Toggle Button -->
+<button class="btn btn-light position-fixed top-0 start-0 m-3" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebar" aria-controls="sidebar" style="z-index: 1100;">
+    <i class="bi bi-list"></i>
+</button>
 
-<div class="card text-bg-secondary mb-3">
-    <div class="card-header">Select a model from the list</div>
-    <div class="card-body">
-        <div id="model-list" class="list-group"></div>
+<!-- Bootstrap Offcanvas Sidebar -->
+<div class="offcanvas offcanvas-start" tabindex="-1" id="sidebar" data-bs-backdrop="false">
+    <div class="offcanvas-header pb-0">
+        <img src="{% static 'txirimiri/icon_outlined.png' %}" alt="TXIRIMIRI" class="logo mx-auto">
+    </div>
+    <div class="offcanvas-body">
+        <div class="card text-bg-secondary mb-3">
+            <div class="card-header">Select a model from the list</div>
+            <div class="card-body">
+                <div id="model-list" class="list-group"></div>
+            </div>
+        </div>
     </div>
 </div>
+
+<!-- Main Content Area -->
+<div class="main-content">
+    <div class="d-flex flex-column align-items-center justify-content-center h-100">
+        <i class="bi bi-grid-3x3-gap" style="font-size: 4rem; color: #6c757d;"></i>
+        <p class="text-muted mt-3">Select a model from the sidebar to view details</p>
+    </div>
+</div>
+
+<script>
+    // Initialize and show sidebar after Bootstrap is loaded
+    window.addEventListener('load', () => {
+        const sidebarElement = document.getElementById('sidebar');
+        const sidebar = bootstrap.Offcanvas.getOrCreateInstance(sidebarElement);
+        sidebar.show();
+    });
+</script>
 
 {% endblock %}
