@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { USDLoader } from 'three/addons/loaders/USDLoader.js';
 
 // Configure CloudKit
 CloudKit.configure({
@@ -25,7 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Query CloudKit for Model3D records
     const query = { recordType: 'Model3D' };
     const options = {
-        desiredKeys: ['name', 'description', 'extension']
+        desiredKeys: ['name', 'description', 'extension', 'alt_extension']
     };
 
     database.performQuery(query, options).then((response) => {
@@ -38,11 +37,26 @@ document.addEventListener('DOMContentLoaded', () => {
             const id = record.recordName;
             const name = record.fields.name.value;
             const description = record.fields.description.value;
-            const extension = record.fields.extension?.value || 'usdz';
+            const extension = record.fields.extension?.value || '';
+            const altExtension = record.fields.alt_extension?.value || '';
+
+            // Only show models that have GLB in either extension or alt_extension
+            const hasGLB = extension.toLowerCase() === 'glb' || altExtension.toLowerCase() === 'glb';
+
+            if (!hasGLB) {
+                console.log(`Skipping model ${name} - no GLB format available`);
+                return;
+            }
+
+            // Determine which format to use (prefer GLB in alt_extension, fallback to extension)
+            const useAltModel = altExtension.toLowerCase() === 'glb';
+            const displayExtension = useAltModel ? altExtension : extension;
+
             const item = document.createElement('a');
             item.className = 'list-group-item list-group-item-action';
             item.innerHTML = generateHTML(name, description, id);
-            item.dataset.extension = extension;
+            item.dataset.extension = displayExtension;
+            item.dataset.useAltModel = useAltModel;
             modelList.appendChild(item);
 
             // Asynchronously fetch and load the thumbnail
@@ -50,7 +64,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Add click handler to display model details
             item.addEventListener('click', () => {
-                displayModelDetails(id, name, description, extension);
+                displayModelDetails(id, name, description, displayExtension, useAltModel);
             });
         });
     }).catch(error => {
@@ -106,7 +120,7 @@ function fetchThumbnail(id, itemElement) {
     });
 }
 
-function displayModelDetails(id, name, description, extension) {
+function displayModelDetails(id, name, description, extension, useAltModel) {
     const mainContent = document.getElementById('main-content');
 
     // Get thumbnail URL from the list item if already loaded
@@ -115,37 +129,53 @@ function displayModelDetails(id, name, description, extension) {
 
     // Update main content with model details
     mainContent.innerHTML = `
-        <div class="container py-5">
-            <h2>${name}</h2>
-            <div class="d-flex align-items-center justify-content-center mb-3" style="height: fit-content;">
-                ${thumbnailSrc
-                    ? `<img src="${thumbnailSrc}" alt="${name}" class="img-fluid rounded" style="max-width: 100%; height: 196px;">`
-                    : '<i class="bi bi-box display-1 text-secondary"></i>'}
+        <div class="container py-4">
+            <div id="model-viewer" class="mb-4 d-none">
+                <div id="threejs-container" class="d-none">
+                    <canvas id="model-canvas" class="w-100 rounded" style="height: 500px;"></canvas>
+                </div>
+                <model-viewer id="usd-viewer" class="w-100 rounded d-none" style="height: 500px;"
+                    camera-controls
+                    touch-action="pan-y"
+                    auto-rotate
+                    shadow-intensity="1"
+                    exposure="1">
+                </model-viewer>
             </div>
-            <p class="lead">${description}</p>
-            <p class="text-muted">Format: ${extension.toUpperCase()}</p>
-            <div id="model-status" class="mt-4">
-                <div class="d-flex align-items-center">
+            <div id="model-status" class="mb-4">
+                <div class="d-flex align-items-center justify-content-center">
                     <div class="spinner-border text-primary me-3" role="status">
                         <span class="visually-hidden">Loading...</span>
                     </div>
                     <span class="text-muted">Downloading model...</span>
                 </div>
             </div>
-            <div id="model-viewer" class="d-none">
-                <canvas id="model-canvas" class="w-100 rounded" style="height: 400px;"></canvas>
+            <h2>${name}</h2>
+            <p class="lead">${description}</p>
+            <p class="text-muted mb-3">Format: ${extension.toUpperCase()}</p>
+            <div class="mb-4">
+                <h5>Current Thumbnail</h5>
+                <div class="d-flex align-items-center justify-content-center bg-light rounded p-3" style="max-width: 300px;">
+                    ${thumbnailSrc
+                        ? `<img src="${thumbnailSrc}" alt="${name} thumbnail" class="img-fluid rounded">`
+                        : '<i class="bi bi-box display-1 text-secondary"></i>'}
+                </div>
             </div>
         </div>
     `;
 
     // Asynchronously fetch the model file
-    fetchModel(id);
+    fetchModel(id, extension, useAltModel);
 }
 
-function fetchModel(id) {
+function fetchModel(id, extension, useAltModel) {
+    // Fetch the appropriate model field based on which has GLB format
+    const modelField = useAltModel ? 'alt_model' : 'model';
     const options = {
-        desiredKeys: ['model']
+        desiredKeys: [modelField]
     };
+
+    console.log(`Fetching ${modelField} for record ${id}`);
 
     database.fetchRecords([id], options).then((response) => {
         const statusElement = document.getElementById('model-status');
@@ -163,15 +193,20 @@ function fetchModel(id) {
         }
 
         const record = response.records[0];
-        const modelUrl = record.fields.model?.value?.downloadURL;
+        const modelUrl = record.fields[modelField]?.value?.downloadURL;
 
         if (modelUrl) {
             console.log('Model downloaded:', modelUrl);
             if (statusElement) {
                 statusElement.classList.add('d-none');
             }
-            // Initialize 3D model viewer with modelUrl
-            initializeThreeJS(modelUrl);
+            // Initialize appropriate viewer based on file extension
+            const isGLB = extension && extension.toLowerCase() === 'glb';
+            if (isGLB) {
+                initializeGLBViewer(modelUrl);
+            } else {
+                initializeThreeJS(modelUrl, extension);
+            }
         } else {
             if (statusElement) {
                 statusElement.innerHTML = `
@@ -194,8 +229,47 @@ function fetchModel(id) {
     });
 }
 
-function initializeThreeJS(modelUrl) {
+function initializeGLBViewer(modelUrl) {
     const viewerContainer = document.getElementById('model-viewer');
+    const glbViewer = document.getElementById('usd-viewer'); // Reuse the model-viewer element
+
+    if (!glbViewer) {
+        console.error('GLB viewer element not found');
+        return;
+    }
+
+    console.log('Initializing GLB model viewer with URL:', modelUrl);
+
+    // Show the viewer containers
+    viewerContainer.classList.remove('d-none');
+    glbViewer.classList.remove('d-none');
+
+    // Set the model source (model-viewer supports GLB natively)
+    glbViewer.setAttribute('src', modelUrl);
+
+    // Handle load event
+    glbViewer.addEventListener('load', () => {
+        console.log('GLB model loaded successfully');
+    });
+
+    // Handle error event
+    glbViewer.addEventListener('error', (event) => {
+        console.error('Error loading GLB model:', event);
+        const statusElement = document.getElementById('model-status');
+        if (statusElement) {
+            statusElement.classList.remove('d-none');
+            statusElement.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle"></i> Error loading 3D model
+                </div>
+            `;
+        }
+    });
+}
+
+function initializeThreeJS(modelUrl, extension) {
+    const viewerContainer = document.getElementById('model-viewer');
+    const threejsContainer = document.getElementById('threejs-container');
     const canvas = document.getElementById('model-canvas');
 
     if (!canvas) {
@@ -203,97 +277,69 @@ function initializeThreeJS(modelUrl) {
         return;
     }
 
-    // Show the viewer
+    console.log('Initializing Three.js with model URL:', modelUrl);
+
+    // Show the viewer containers
     viewerContainer.classList.remove('d-none');
+    threejsContainer.classList.remove('d-none');
 
-    // Create scene
-    const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0xf8f9fa);
+    // Wait for next frame to ensure canvas is visible and has dimensions
+    requestAnimationFrame(() => {
+        const width = canvas.clientWidth || 800;
+        const height = canvas.clientHeight || 500;
 
-    // Create camera
-    const camera = new THREE.PerspectiveCamera(
-        50,
-        canvas.clientWidth / canvas.clientHeight,
-        0.1,
-        1000
-    );
-    camera.position.set(0, 1, 3);
+        console.log('Canvas dimensions:', width, 'x', height);
 
-    // Create renderer
-    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-    renderer.setSize(canvas.clientWidth, canvas.clientHeight);
-    renderer.setPixelRatio(window.devicePixelRatio);
+        // Create scene
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xf8f9fa);
 
-    // Add lights
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-    scene.add(ambientLight);
+        // Create camera
+        const camera = new THREE.PerspectiveCamera(
+            50,
+            width / height,
+            0.1,
+            1000
+        );
+        camera.position.set(0, 1, 3);
 
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    directionalLight.position.set(5, 5, 5);
-    scene.add(directionalLight);
-
-    // Add orbit controls
-    const controls = new OrbitControls(camera, canvas);
-    controls.enableDamping = true;
-    controls.dampingFactor = 0.05;
-
-    // Load USDZ model
-    const loader = new USDLoader();
-    loader.load(
-        modelUrl,
-        (group) => {
-            // Center and scale the model
-            const box = new THREE.Box3().setFromObject(group);
-            const center = box.getCenter(new THREE.Vector3());
-            const size = box.getSize(new THREE.Vector3());
-
-            // Center the model
-            group.position.sub(center);
-
-            // Scale to fit
-            const maxDim = Math.max(size.x, size.y, size.z);
-            const scale = 2 / maxDim;
-            group.scale.multiplyScalar(scale);
-
-            scene.add(group);
-
-            // Adjust camera to fit model
-            const distance = maxDim * 1.5;
-            camera.position.set(distance, distance * 0.5, distance);
-            camera.lookAt(0, 0, 0);
-            controls.update();
-        },
-        (progress) => {
-            console.log('Loading model:', (progress.loaded / progress.total * 100).toFixed(2) + '%');
-        },
-        (error) => {
-            console.error('Error loading model:', error);
-            const statusElement = document.getElementById('model-status');
-            if (statusElement) {
-                statusElement.classList.remove('d-none');
-                statusElement.innerHTML = `
-                    <div class="alert alert-danger">
-                        <i class="bi bi-exclamation-triangle"></i> Error loading 3D model
-                    </div>
-                `;
-            }
-        }
-    );
-
-    // Animation loop
-    function animate() {
-        requestAnimationFrame(animate);
-        controls.update();
-        renderer.render(scene, camera);
-    }
-    animate();
-
-    // Handle window resize
-    window.addEventListener('resize', () => {
-        const width = canvas.clientWidth;
-        const height = canvas.clientHeight;
-        camera.aspect = width / height;
-        camera.updateProjectionMatrix();
+        // Create renderer
+        const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
         renderer.setSize(width, height);
+        renderer.setPixelRatio(window.devicePixelRatio);
+
+        // Add lights
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(5, 5, 5);
+        scene.add(directionalLight);
+
+        // Add orbit controls
+        const controls = new OrbitControls(camera, canvas);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // Load model with appropriate loader
+        // TODO: Add GLTFLoader, OBJLoader, etc. based on file extension
+        console.log(`Three.js scene ready. Add loader for ${extension} format:`, modelUrl);
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            const width = canvas.clientWidth;
+            const height = canvas.clientHeight;
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(width, height);
+        });
     });
 }   
