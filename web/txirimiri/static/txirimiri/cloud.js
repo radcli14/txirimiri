@@ -142,12 +142,12 @@ function displayModelDetails(id, name, description, extension, useAltModel) {
                     exposure="1">
                 </model-viewer>
             </div>
-            <div id="model-status" class="mb-4">
-                <div class="d-flex align-items-center justify-content-center">
-                    <div class="spinner-border text-primary me-3" role="status">
+            <div id="model-status" class="mb-4 d-flex align-items-center justify-content-center bg-light rounded" style="height: 500px;">
+                <div class="text-center">
+                    <div class="spinner-border text-primary mb-3" role="status">
                         <span class="visually-hidden">Loading...</span>
                     </div>
-                    <span class="text-muted">Downloading model...</span>
+                    <p class="text-muted">Downloading model...</p>
                 </div>
             </div>
             <h2>${name}</h2>
