@@ -58,14 +58,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function generateHTML(name, description, id) {
     return `
-        <div class="model-item-content">
-            <div class="model-thumbnail-container">
-                <i class="bi bi-box model-icon-placeholder"></i>
+        <div class="d-flex align-items-start gap-3 text-start">
+            <div class="model-thumbnail-container flex-shrink-0 d-flex align-items-center justify-content-center bg-light rounded overflow-hidden">
+                <i class="bi bi-box model-icon-placeholder fs-1 text-secondary"></i>
                 <img class="model-thumbnail" id="thumbnail-${id}" alt="${name} thumbnail" style="display: none;">
             </div>
-            <div class="model-details">
-                <h5 class="card-title">${name}</h5>
-                <p class="card-text">${description}</p>
+            <div class="flex-grow-1">
+                <h5 class="mb-2">${name}</h5>
+                <p class="mb-0 line-clamp-2">${description}</p>
             </div>
         </div>
     `;
@@ -105,7 +105,7 @@ function fetchThumbnail(id, itemElement) {
 }
 
 function displayModelDetails(id, name, description, extension) {
-    const mainContent = document.querySelector('.main-content');
+    const mainContent = document.getElementById('main-content');
 
     // Get thumbnail URL from the list item if already loaded
     const listItemImg = document.getElementById(`thumbnail-${id}`);
@@ -114,30 +114,24 @@ function displayModelDetails(id, name, description, extension) {
     // Update main content with model details
     mainContent.innerHTML = `
         <div class="container py-5">
-            <div class="row">
-                <div class="col-md-6">
-                    <div class="model-detail-thumbnail">
-                        ${thumbnailSrc
-                            ? `<img src="${thumbnailSrc}" alt="${name}" class="img-fluid rounded">`
-                            : '<i class="bi bi-box" style="font-size: 6rem; color: #6c757d;"></i>'}
+            <h2>${name}</h2>
+            <div class="d-flex align-items-center justify-content-center mb-3" style="height: fit-content;">
+                ${thumbnailSrc
+                    ? `<img src="${thumbnailSrc}" alt="${name}" class="img-fluid rounded" style="max-width: 100%; height: 196px;">`
+                    : '<i class="bi bi-box display-1 text-secondary"></i>'}
+            </div>
+            <p class="lead">${description}</p>
+            <p class="text-muted">Format: ${extension.toUpperCase()}</p>
+            <div id="model-status" class="mt-4">
+                <div class="d-flex align-items-center">
+                    <div class="spinner-border text-primary me-3" role="status">
+                        <span class="visually-hidden">Loading...</span>
                     </div>
+                    <span class="text-muted">Downloading model...</span>
                 </div>
-                <div class="col-md-6">
-                    <h2>${name}</h2>
-                    <p class="lead">${description}</p>
-                    <p class="text-muted">Format: ${extension.toUpperCase()}</p>
-                    <div id="model-status" class="mt-4">
-                        <div class="d-flex align-items-center">
-                            <div class="spinner-border text-primary me-3" role="status">
-                                <span class="visually-hidden">Loading...</span>
-                            </div>
-                            <span class="text-muted">Downloading model...</span>
-                        </div>
-                    </div>
-                    <div id="model-viewer" style="display: none;">
-                        <!-- Model viewer will be inserted here -->
-                    </div>
-                </div>
+            </div>
+            <div id="model-viewer" class="d-none">
+                <!-- Model viewer will be inserted here -->
             </div>
         </div>
     `;

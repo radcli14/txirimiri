@@ -19,7 +19,7 @@
 <!-- Bootstrap Offcanvas Sidebar -->
 <div class="offcanvas offcanvas-start" tabindex="-1" id="sidebar" data-bs-backdrop="false">
     <div class="offcanvas-header pb-0">
-        <img src="{% static 'txirimiri/icon_outlined.png' %}" alt="TXIRIMIRI" class="logo mx-auto">
+        <img src="{% static 'txirimiri/icon_outlined.png' %}" alt="TXIRIMIRI" class="logo w-50 d-block mx-auto">
     </div>
     <div class="offcanvas-body">
         <div class="card text-bg-secondary mb-3">
@@ -32,9 +32,9 @@
 </div>
 
 <!-- Main Content Area -->
-<div class="main-content">
+<div id="main-content" class="position-fixed top-0 start-0 w-100 vh-100 bg-light text-center" style="z-index: 1;">
     <div class="d-flex flex-column align-items-center justify-content-center h-100">
-        <i class="bi bi-grid-3x3-gap" style="font-size: 4rem; color: #6c757d;"></i>
+        <i class="bi bi-grid-3x3-gap display-1 text-secondary"></i>
         <p class="text-muted mt-3">Select a model from the sidebar to view details</p>
     </div>
 </div>

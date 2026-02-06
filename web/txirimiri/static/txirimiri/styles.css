@@ -1,91 +1,40 @@
+/* Custom styles - use Bootstrap utilities for everything else */
+
 body {
-    text-align: center;
-    margin: 0;
     overflow: hidden;
 }
 
+/* Custom logo color filter */
 .logo {
-    width: 200px;
     filter: invert(1) sepia(1) hue-rotate(69deg) saturate(19) brightness(0.628);
-    display: block;
-    margin: 0 auto;
 }
 
-.main-content {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background-color: #e9ecef;
-    z-index: 1;
-}
-
-.model-item-content {
-    display: flex;
-    align-items: flex-start;
-    gap: 1rem;
-    text-align: left;
-}
-
+/* Thumbnail container with absolute positioning for icon/image layering */
 .model-thumbnail-container {
-    flex-shrink: 0;
     width: 80px;
     height: 80px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background-color: #f8f9fa;
-    border-radius: 4px;
-    overflow: hidden;
     position: relative;
 }
 
 .model-icon-placeholder {
-    font-size: 2.5rem;
-    color: #6c757d;
     position: absolute;
 }
 
 .model-thumbnail {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
     position: absolute;
     top: 0;
     left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
 }
 
-.model-details {
-    flex-grow: 1;
-}
-
-.model-details .card-title {
-    margin-bottom: 0.5rem;
-}
-
-.model-details .card-text {
-    margin-bottom: 0;
+/* Line clamp for description truncation (no Bootstrap equivalent) */
+.line-clamp-2 {
     display: -webkit-box;
     -webkit-line-clamp: 2;
     line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
     text-overflow: ellipsis;
-}
-
-/* Model Detail View */
-.model-detail-thumbnail {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 300px;
-    background-color: #f8f9fa;
-    border-radius: 8px;
-    padding: 2rem;
-}
-
-.model-detail-thumbnail img {
-    max-width: 100%;
-    height: auto;
 }
