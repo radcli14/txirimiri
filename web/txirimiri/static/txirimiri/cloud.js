@@ -1,4 +1,6 @@
-"use strict";
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { USDLoader } from 'three/addons/loaders/USDLoader.js';
 
 // Configure CloudKit
 CloudKit.configure({
@@ -131,7 +133,7 @@ function displayModelDetails(id, name, description, extension) {
                 </div>
             </div>
             <div id="model-viewer" class="d-none">
-                <!-- Model viewer will be inserted here -->
+                <canvas id="model-canvas" class="w-100 rounded" style="height: 400px;"></canvas>
             </div>
         </div>
     `;
@@ -166,13 +168,10 @@ function fetchModel(id) {
         if (modelUrl) {
             console.log('Model downloaded:', modelUrl);
             if (statusElement) {
-                statusElement.innerHTML = `
-                    <div class="alert alert-success">
-                        <i class="bi bi-check-circle"></i> Model loaded successfully
-                    </div>
-                `;
+                statusElement.classList.add('d-none');
             }
-            // TODO: Initialize 3D model viewer with modelUrl
+            // Initialize 3D model viewer with modelUrl
+            initializeThreeJS(modelUrl);
         } else {
             if (statusElement) {
                 statusElement.innerHTML = `
@@ -192,5 +191,109 @@ function fetchModel(id) {
                 </div>
             `;
         }
+    });
+}
+
+function initializeThreeJS(modelUrl) {
+    const viewerContainer = document.getElementById('model-viewer');
+    const canvas = document.getElementById('model-canvas');
+
+    if (!canvas) {
+        console.error('Canvas element not found');
+        return;
+    }
+
+    // Show the viewer
+    viewerContainer.classList.remove('d-none');
+
+    // Create scene
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0xf8f9fa);
+
+    // Create camera
+    const camera = new THREE.PerspectiveCamera(
+        50,
+        canvas.clientWidth / canvas.clientHeight,
+        0.1,
+        1000
+    );
+    camera.position.set(0, 1, 3);
+
+    // Create renderer
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+    renderer.setPixelRatio(window.devicePixelRatio);
+
+    // Add lights
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    scene.add(ambientLight);
+
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    directionalLight.position.set(5, 5, 5);
+    scene.add(directionalLight);
+
+    // Add orbit controls
+    const controls = new OrbitControls(camera, canvas);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+
+    // Load USDZ model
+    const loader = new USDLoader();
+    loader.load(
+        modelUrl,
+        (group) => {
+            // Center and scale the model
+            const box = new THREE.Box3().setFromObject(group);
+            const center = box.getCenter(new THREE.Vector3());
+            const size = box.getSize(new THREE.Vector3());
+
+            // Center the model
+            group.position.sub(center);
+
+            // Scale to fit
+            const maxDim = Math.max(size.x, size.y, size.z);
+            const scale = 2 / maxDim;
+            group.scale.multiplyScalar(scale);
+
+            scene.add(group);
+
+            // Adjust camera to fit model
+            const distance = maxDim * 1.5;
+            camera.position.set(distance, distance * 0.5, distance);
+            camera.lookAt(0, 0, 0);
+            controls.update();
+        },
+        (progress) => {
+            console.log('Loading model:', (progress.loaded / progress.total * 100).toFixed(2) + '%');
+        },
+        (error) => {
+            console.error('Error loading model:', error);
+            const statusElement = document.getElementById('model-status');
+            if (statusElement) {
+                statusElement.classList.remove('d-none');
+                statusElement.innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="bi bi-exclamation-triangle"></i> Error loading 3D model
+                    </div>
+                `;
+            }
+        }
+    );
+
+    // Animation loop
+    function animate() {
+        requestAnimationFrame(animate);
+        controls.update();
+        renderer.render(scene, camera);
+    }
+    animate();
+
+    // Handle window resize
+    window.addEventListener('resize', () => {
+        const width = canvas.clientWidth;
+        const height = canvas.clientHeight;
+        camera.aspect = width / height;
+        camera.updateProjectionMatrix();
+        renderer.setSize(width, height);
     });
 }   
