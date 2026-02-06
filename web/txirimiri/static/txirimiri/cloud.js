@@ -53,7 +53,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const displayExtension = useAltModel ? altExtension : extension;
 
             const item = document.createElement('a');
-            item.className = 'list-group-item list-group-item-action';
+            item.className = 'list-group-item list-group-item-action text-bg-secondary';
             item.innerHTML = generateHTML(name, description, id);
             item.dataset.extension = displayExtension;
             item.dataset.useAltModel = useAltModel;
@@ -64,7 +64,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Add click handler to display model details
             item.addEventListener('click', () => {
+                // Reset all items to unselected state
+                document.querySelectorAll('#model-list .list-group-item').forEach(i => {
+                    i.classList.remove('text-bg-light', 'active');
+                    i.classList.add('text-bg-secondary');
+                });
+
+                // Set clicked item to selected state
+                item.classList.remove('text-bg-secondary');
+                item.classList.add('text-bg-light');
+
                 displayModelDetails(id, name, description, displayExtension, useAltModel);
+
+                // Close sidebar on mobile devices (phones and tablets)
+                if (window.innerWidth < 768) {
+                    const sidebarElement = document.getElementById('sidebar');
+                    const sidebar = bootstrap.Offcanvas.getInstance(sidebarElement);
+                    if (sidebar) {
+                        sidebar.hide();
+                    }
+                }
             });
         });
     }).catch(error => {
@@ -121,6 +140,12 @@ function fetchThumbnail(id, itemElement) {
 }
 
 function displayModelDetails(id, name, description, extension, useAltModel) {
+    // Update navbar title
+    const navbarTitle = document.getElementById('navbar-title');
+    if (navbarTitle) {
+        navbarTitle.textContent = name;
+    }
+
     const mainContent = document.getElementById('main-content');
 
     // Get thumbnail URL from the list item if already loaded
@@ -150,7 +175,6 @@ function displayModelDetails(id, name, description, extension, useAltModel) {
                     <p class="text-muted">Downloading model...</p>
                 </div>
             </div>
-            <h2>${name}</h2>
             <p class="lead">${description}</p>
             <p class="text-muted mb-3">Format: ${extension.toUpperCase()}</p>
             <div class="mb-4">
