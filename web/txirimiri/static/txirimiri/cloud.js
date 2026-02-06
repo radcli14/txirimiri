@@ -62,7 +62,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function generateHTML(name, description) {
     return `
-        <h5 class="card-title">${name}</h5>
-        <p class="card-text">${description}</p>
+        <div class="model-item-content">
+            <div class="model-icon-placeholder">
+                <i class="bi bi-box"></i>
+            </div>
+            <div class="model-details">
+                <h5 class="card-title">${name}</h5>
+                <p class="card-text">${description}</p>
+            </div>
+        </div>
     `;
 }   

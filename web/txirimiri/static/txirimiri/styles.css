@@ -1,4 +1,33 @@
+body {
+    text-align: center;
+}
+
 .logo {
     width: 256px;
     filter: invert(1) sepia(1) hue-rotate(69deg) saturate(19) brightness(0.628);
+}
+
+.model-item-content {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    text-align: left;
+}
+
+.model-icon-placeholder {
+    font-size: 3rem;
+    color: #6c757d;
+    flex-shrink: 0;
+}
+
+.model-details {
+    flex-grow: 1;
+}
+
+.model-details .card-title {
+    margin-bottom: 0.5rem;
+}
+
+.model-details .card-text {
+    margin-bottom: 0;
 }
