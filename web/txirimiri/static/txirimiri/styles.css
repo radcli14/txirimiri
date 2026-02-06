@@ -14,10 +14,32 @@ body {
     text-align: left;
 }
 
-.model-icon-placeholder {
-    font-size: 3rem;
-    color: #6c757d;
+.model-thumbnail-container {
     flex-shrink: 0;
+    width: 80px;
+    height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+}
+
+.model-icon-placeholder {
+    font-size: 2.5rem;
+    color: #6c757d;
+    position: absolute;
+}
+
+.model-thumbnail {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    position: absolute;
+    top: 0;
+    left: 0;
 }
 
 .model-details {
