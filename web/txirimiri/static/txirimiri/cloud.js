@@ -194,6 +194,10 @@ function displayModelDetails(id, name, description, extension, useAltModel) {
                         <input type="range" id="exposure-slider" class="form-range" min="-1" max="1" step="0.01" value="0">
                     </div>
                     <div class="mb-2">
+                        <label for="light-slider" class="form-label mb-1 small fw-semibold">Light <span id="light-value" class="fw-normal text-muted">1.0</span></label>
+                        <input type="range" id="light-slider" class="form-range" min="-1" max="1" step="0.01" value="0">
+                    </div>
+                    <div class="mb-2">
                         <label for="scale-slider" class="form-label mb-1 small fw-semibold">Scale <span id="scale-value" class="fw-normal text-muted">1.0x</span></label>
                         <input type="range" id="scale-slider" class="form-range" min="-1" max="1" step="0.01" value="0">
                     </div>
@@ -484,6 +488,17 @@ function initializeViewer(modelUrl) {
                 });
             }
 
+            // Wire up the light (environment intensity) slider
+            const lightSlider = document.getElementById('light-slider');
+            const lightLabel = document.getElementById('light-value');
+            if (lightSlider) {
+                lightSlider.addEventListener('input', () => {
+                    const intensity = Math.pow(10, parseFloat(lightSlider.value));
+                    lightLabel.textContent = intensity.toFixed(1);
+                    viewer.scene.environmentIntensity = intensity;
+                });
+            }
+
             // Wire up the scale slider
             const scaleSlider = document.getElementById('scale-slider');
             const scaleLabel = document.getElementById('scale-value');
@@ -743,6 +758,15 @@ function applySkyboxTexture(texture, height, exposure, shadowIntensity, shadowSo
         exposureLabel.textContent = expValue.toFixed(1);
     }
 
+    // Reset environment intensity and sync light slider
+    viewer.scene.environmentIntensity = 1.0;
+    const lightSlider = document.getElementById('light-slider');
+    const lightLabel = document.getElementById('light-value');
+    if (lightSlider) {
+        lightSlider.value = 0;
+        lightLabel.textContent = '1.0';
+    }
+
     // Apply shadow intensity
     if (shadowIntensity) {
         viewer.shadowPlane.material.opacity = parseFloat(shadowIntensity);
@@ -791,13 +815,20 @@ function removeSkybox() {
     viewer.scene.background = new THREE.Color(0xf8f9fa);
     viewer.scene.environment = null;
 
-    // Reset exposure, shadow, and sync slider
+    // Reset exposure, environment intensity, shadow, and sync sliders
     viewer.renderer.toneMappingExposure = 1.0;
+    viewer.scene.environmentIntensity = 1.0;
     viewer.shadowPlane.material.opacity = 0.3;
     const exposureSlider = document.getElementById('exposure-slider');
     const exposureLabel = document.getElementById('exposure-value');
     if (exposureSlider) {
         exposureSlider.value = 0;
         exposureLabel.textContent = '1.0';
+    }
+    const lightSliderEl = document.getElementById('light-slider');
+    const lightLabelEl = document.getElementById('light-value');
+    if (lightSliderEl) {
+        lightSliderEl.value = 0;
+        lightLabelEl.textContent = '1.0';
     }
 }
