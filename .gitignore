@@ -3,6 +3,7 @@
 *__pycache__
 *.env
 web/staticfiles_build/
+*claude*
 
 # Xcode
 #
