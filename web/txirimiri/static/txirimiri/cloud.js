@@ -155,24 +155,31 @@ function displayModelDetails(id, name, description, extension, useAltModel) {
     // Update main content with model details
     mainContent.innerHTML = `
         <div class="container py-4">
-            <div id="model-viewer" class="mb-4 d-none">
-                <div id="threejs-container" class="d-none">
-                    <canvas id="model-canvas" class="w-100 rounded" style="height: 500px;"></canvas>
+            <div class="position-relative">
+                <div id="skybox-selector" class="position-absolute top-0 end-0" style="z-index: 10;">
+                    <select id="skybox-dropdown" class="form-select form-select-sm" style="width: auto;">
+                        <option value="">Loading skyboxes...</option>
+                    </select>
                 </div>
-                <model-viewer id="usd-viewer" class="w-100 rounded d-none" style="height: 500px;"
-                    camera-controls
-                    touch-action="pan-y"
-                    auto-rotate
-                    shadow-intensity="1"
-                    exposure="1">
-                </model-viewer>
-            </div>
-            <div id="model-status" class="mb-4 d-flex align-items-center justify-content-center bg-light rounded" style="height: 500px;">
-                <div class="text-center">
-                    <div class="spinner-border text-primary mb-3" role="status">
-                        <span class="visually-hidden">Loading...</span>
+                <div id="model-viewer" class="mb-4 d-none">
+                    <div id="threejs-container" class="d-none">
+                        <canvas id="model-canvas" class="w-100 rounded" style="height: 500px;"></canvas>
                     </div>
-                    <p class="text-muted">Downloading model...</p>
+                    <model-viewer id="usd-viewer" class="w-100 rounded d-none" style="height: 500px;"
+                        camera-controls
+                        touch-action="pan-y"
+                        auto-rotate
+                        shadow-intensity="1"
+                        exposure="1">
+                    </model-viewer>
+                </div>
+                <div id="model-status" class="mb-4 d-flex align-items-center justify-content-center bg-light rounded" style="height: 500px;">
+                    <div class="text-center">
+                        <div class="spinner-border text-primary mb-3" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="text-muted">Downloading model...</p>
+                    </div>
                 </div>
             </div>
             <p class="lead">${description}</p>
@@ -188,8 +195,9 @@ function displayModelDetails(id, name, description, extension, useAltModel) {
         </div>
     `;
 
-    // Asynchronously fetch the model file
+    // Asynchronously fetch the model file and skyboxes
     fetchModel(id, extension, useAltModel);
+    fetchSkyboxes();
 }
 
 function fetchModel(id, extension, useAltModel) {
@@ -366,4 +374,171 @@ function initializeThreeJS(modelUrl, extension) {
             renderer.setSize(width, height);
         });
     });
+}
+
+function fetchSkyboxes() {
+    const dropdown = document.getElementById('skybox-dropdown');
+
+    if (!dropdown) {
+        console.error('Skybox dropdown not found');
+        return;
+    }
+
+    // Query CloudKit for Skybox records
+    const query = { recordType: 'Skybox' };
+    const options = {
+        desiredKeys: ['name', 'extension', 'height', 'exposure', 'shadow_intensity', 'shadow_softness']
+    };
+
+    database.performQuery(query, options).then((response) => {
+        if (response.hasErrors) {
+            console.error('Error fetching skyboxes:', response.errors[0]);
+            dropdown.innerHTML = '<option value="">No skyboxes available</option>';
+            return;
+        }
+
+        // Clear the dropdown and add default option
+        dropdown.innerHTML = '<option value="">Select a skybox</option>';
+
+        // Add each skybox as an option
+        response.records.forEach(record => {
+            const id = record.recordName;
+            const name = record.fields.name?.value || 'Unnamed Skybox';
+            const extension = record.fields.extension?.value || 'hdr';
+            const height = record.fields.height?.value;
+            const exposure = record.fields.exposure?.value;
+            const shadowIntensity = record.fields.shadow_intensity?.value;
+            const shadowSoftness = record.fields.shadow_softness?.value;
+
+            const option = document.createElement('option');
+            option.value = id;
+            option.textContent = name;
+            option.dataset.extension = extension;
+            option.dataset.height = height || '';
+            option.dataset.exposure = exposure || '';
+            option.dataset.shadowIntensity = shadowIntensity || '';
+            option.dataset.shadowSoftness = shadowSoftness || '';
+
+            dropdown.appendChild(option);
+        });
+
+        // Add change event listener
+        dropdown.addEventListener('change', (event) => {
+            const selectedOption = event.target.options[event.target.selectedIndex];
+            if (selectedOption.value) {
+                applySkybox(
+                    selectedOption.value,
+                    selectedOption.textContent,
+                    selectedOption.dataset.extension,
+                    selectedOption.dataset.height,
+                    selectedOption.dataset.exposure,
+                    selectedOption.dataset.shadowIntensity,
+                    selectedOption.dataset.shadowSoftness
+                );
+            } else {
+                // Remove skybox if "Select a skybox" is chosen
+                removeSkybox();
+            }
+        });
+
+        console.log(`Loaded ${response.records.length} skyboxes`);
+    }).catch(error => {
+        console.error('Error fetching skyboxes:', error);
+        dropdown.innerHTML = '<option value="">Error loading skyboxes</option>';
+    });
+}
+
+function applySkybox(id, name, extension, height, exposure, shadowIntensity, shadowSoftness) {
+    const modelViewer = document.getElementById('usd-viewer');
+
+    if (!modelViewer) {
+        console.error('Model viewer not found');
+        return;
+    }
+
+    console.log('Applying skybox:', name);
+
+    // Fetch the skybox image from CloudKit
+    const options = {
+        desiredKeys: ['image']
+    };
+
+    database.fetchRecords([id], options).then((response) => {
+        if (response.hasErrors) {
+            console.error('Error fetching skybox image for', id, response.errors[0]);
+            return;
+        }
+
+        const record = response.records[0];
+        const imageUrl = record.fields.image?.value?.downloadURL;
+
+        if (imageUrl) {
+            console.log('Skybox image URL:', imageUrl);
+            console.log('Skybox extension:', extension);
+            console.log('Skybox height:', height || 'none');
+
+            // Append file extension as URL fragment so model-viewer uses the correct loader
+            // (CloudKit URLs don't include the original file extension)
+            const skyboxUrl = imageUrl + '#.'+  extension;
+
+            // Set skybox image
+            modelViewer.setAttribute('skybox-image', skyboxUrl);
+            modelViewer.setAttribute('alt', name);
+
+            // Set exposure if specified
+            if (exposure) {
+                modelViewer.setAttribute('exposure', exposure);
+                console.log('Set exposure:', exposure);
+            }
+
+            // Set shadow intensity if specified
+            if (shadowIntensity) {
+                modelViewer.setAttribute('shadow-intensity', shadowIntensity);
+                console.log('Set shadow intensity:', shadowIntensity);
+            }
+
+            // Set shadow softness if specified
+            if (shadowSoftness) {
+                modelViewer.setAttribute('shadow-softness', shadowSoftness);
+                console.log('Set shadow softness:', shadowSoftness);
+            }
+
+            // Set skybox height for ground projection if specified
+            if (height) {
+                modelViewer.setAttribute('skybox-height', `${height}m`);
+                console.log('Using ground-projected skybox with height:', height);
+            } else {
+                modelViewer.removeAttribute('skybox-height');
+            }
+
+            console.log('Skybox attributes set. Current attributes:', {
+                'skybox-image': modelViewer.getAttribute('skybox-image'),
+                'skybox-height': modelViewer.getAttribute('skybox-height'),
+                'exposure': modelViewer.getAttribute('exposure'),
+                'shadow-intensity': modelViewer.getAttribute('shadow-intensity')
+            });
+        } else {
+            console.error('No image URL found for skybox');
+        }
+    }).catch((error) => {
+        console.error('Error fetching skybox image for', id, error);
+    });
+}
+
+function removeSkybox() {
+    const modelViewer = document.getElementById('usd-viewer');
+
+    if (!modelViewer) {
+        return;
+    }
+
+    console.log('Removing skybox');
+
+    // Remove skybox attributes
+    modelViewer.removeAttribute('skybox-image');
+    modelViewer.removeAttribute('skybox-height');
+
+    // Reset to default values
+    modelViewer.setAttribute('exposure', '1');
+    modelViewer.setAttribute('shadow-intensity', '1');
 }   
