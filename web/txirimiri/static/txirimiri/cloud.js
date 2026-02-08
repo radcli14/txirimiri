@@ -1,5 +1,8 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { HDRLoader } from 'three/addons/loaders/HDRLoader.js';
+import { GroundedSkybox } from 'three/addons/objects/GroundedSkybox.js';
 
 // Configure CloudKit
 CloudKit.configure({
@@ -17,6 +20,9 @@ const container = CloudKit.getDefaultContainer();
 const database = container.publicCloudDatabase;
 
 console.log('CloudKit configured and initialized');
+
+// Module-level Three.js state (shared between viewer and skybox functions)
+let viewer = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     const modelList = document.getElementById('model-list');
@@ -146,6 +152,12 @@ function displayModelDetails(id, name, description, extension, useAltModel) {
         navbarTitle.textContent = name;
     }
 
+    // Clean up previous viewer
+    if (viewer) {
+        viewer.dispose();
+        viewer = null;
+    }
+
     const mainContent = document.getElementById('main-content');
 
     // Get thumbnail URL from the list item if already loaded
@@ -161,17 +173,8 @@ function displayModelDetails(id, name, description, extension, useAltModel) {
                         <option value="">Loading skyboxes...</option>
                     </select>
                 </div>
-                <div id="model-viewer" class="mb-4 d-none">
-                    <div id="threejs-container" class="d-none">
-                        <canvas id="model-canvas" class="w-100 rounded" style="height: 500px;"></canvas>
-                    </div>
-                    <model-viewer id="usd-viewer" class="w-100 rounded d-none" style="height: 500px;"
-                        camera-controls
-                        touch-action="pan-y"
-                        auto-rotate
-                        shadow-intensity="1"
-                        exposure="1">
-                    </model-viewer>
+                <div id="viewer-container" class="mb-4 d-none">
+                    <canvas id="model-canvas" class="w-100 rounded" style="height: 500px;"></canvas>
                 </div>
                 <div id="model-status" class="mb-4 d-flex align-items-center justify-content-center bg-light rounded" style="height: 500px;">
                     <div class="text-center">
@@ -228,17 +231,11 @@ function fetchModel(id, extension, useAltModel) {
         const modelUrl = record.fields[modelField]?.value?.downloadURL;
 
         if (modelUrl) {
-            console.log('Model downloaded:', modelUrl);
+            console.log('Model URL:', modelUrl);
             if (statusElement) {
                 statusElement.classList.add('d-none');
             }
-            // Initialize appropriate viewer based on file extension
-            const isGLB = extension && extension.toLowerCase() === 'glb';
-            if (isGLB) {
-                initializeGLBViewer(modelUrl);
-            } else {
-                initializeThreeJS(modelUrl, extension);
-            }
+            initializeViewer(modelUrl);
         } else {
             if (statusElement) {
                 statusElement.innerHTML = `
@@ -261,47 +258,8 @@ function fetchModel(id, extension, useAltModel) {
     });
 }
 
-function initializeGLBViewer(modelUrl) {
-    const viewerContainer = document.getElementById('model-viewer');
-    const glbViewer = document.getElementById('usd-viewer'); // Reuse the model-viewer element
-
-    if (!glbViewer) {
-        console.error('GLB viewer element not found');
-        return;
-    }
-
-    console.log('Initializing GLB model viewer with URL:', modelUrl);
-
-    // Show the viewer containers
-    viewerContainer.classList.remove('d-none');
-    glbViewer.classList.remove('d-none');
-
-    // Set the model source (model-viewer supports GLB natively)
-    glbViewer.setAttribute('src', modelUrl);
-
-    // Handle load event
-    glbViewer.addEventListener('load', () => {
-        console.log('GLB model loaded successfully');
-    });
-
-    // Handle error event
-    glbViewer.addEventListener('error', (event) => {
-        console.error('Error loading GLB model:', event);
-        const statusElement = document.getElementById('model-status');
-        if (statusElement) {
-            statusElement.classList.remove('d-none');
-            statusElement.innerHTML = `
-                <div class="alert alert-danger">
-                    <i class="bi bi-exclamation-triangle"></i> Error loading 3D model
-                </div>
-            `;
-        }
-    });
-}
-
-function initializeThreeJS(modelUrl, extension) {
-    const viewerContainer = document.getElementById('model-viewer');
-    const threejsContainer = document.getElementById('threejs-container');
+function initializeViewer(modelUrl) {
+    const viewerContainer = document.getElementById('viewer-container');
     const canvas = document.getElementById('model-canvas');
 
     if (!canvas) {
@@ -309,69 +267,162 @@ function initializeThreeJS(modelUrl, extension) {
         return;
     }
 
-    console.log('Initializing Three.js with model URL:', modelUrl);
+    console.log('Initializing Three.js viewer with URL:', modelUrl);
 
-    // Show the viewer containers
+    // Show the viewer container
     viewerContainer.classList.remove('d-none');
-    threejsContainer.classList.remove('d-none');
 
     // Wait for next frame to ensure canvas is visible and has dimensions
     requestAnimationFrame(() => {
         const width = canvas.clientWidth || 800;
         const height = canvas.clientHeight || 500;
 
-        console.log('Canvas dimensions:', width, 'x', height);
-
         // Create scene
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0xf8f9fa);
 
         // Create camera
-        const camera = new THREE.PerspectiveCamera(
-            50,
-            width / height,
-            0.1,
-            1000
-        );
+        const camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 1000);
         camera.position.set(0, 1, 3);
 
         // Create renderer
         const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
         renderer.setSize(width, height);
         renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.0;
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
-        // Add lights
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        // Add ambient light
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
         scene.add(ambientLight);
 
-        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-        directionalLight.position.set(5, 5, 5);
+        // Add directional light with shadows
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
+        directionalLight.position.set(5, 10, 5);
+        directionalLight.castShadow = true;
+        directionalLight.shadow.mapSize.width = 2048;
+        directionalLight.shadow.mapSize.height = 2048;
+        directionalLight.shadow.camera.near = 0.5;
+        directionalLight.shadow.camera.far = 50;
+        directionalLight.shadow.camera.left = -10;
+        directionalLight.shadow.camera.right = 10;
+        directionalLight.shadow.camera.top = 10;
+        directionalLight.shadow.camera.bottom = -10;
+        directionalLight.shadow.bias = -0.0001;
         scene.add(directionalLight);
+
+        // Add shadow-receiving ground plane
+        const shadowPlane = new THREE.Mesh(
+            new THREE.PlaneGeometry(200, 200),
+            new THREE.ShadowMaterial({ opacity: 0.3 })
+        );
+        shadowPlane.rotation.x = -Math.PI / 2;
+        shadowPlane.position.y = 0.01;
+        shadowPlane.receiveShadow = true;
+        scene.add(shadowPlane);
 
         // Add orbit controls
         const controls = new OrbitControls(camera, canvas);
         controls.enableDamping = true;
         controls.dampingFactor = 0.05;
+        controls.target.set(0, 0.5, 0);
+        controls.update();
+
+        // Store viewer state for skybox functions
+        viewer = {
+            scene,
+            camera,
+            renderer,
+            controls,
+            directionalLight,
+            shadowPlane,
+            groundedSkybox: null,
+            animationId: null,
+            resizeHandler: null,
+            dispose() {
+                if (this.animationId) {
+                    cancelAnimationFrame(this.animationId);
+                }
+                if (this.resizeHandler) {
+                    window.removeEventListener('resize', this.resizeHandler);
+                }
+                this.renderer.dispose();
+                this.controls.dispose();
+            }
+        };
 
         // Animation loop
         function animate() {
-            requestAnimationFrame(animate);
+            viewer.animationId = requestAnimationFrame(animate);
             controls.update();
             renderer.render(scene, camera);
         }
         animate();
 
-        // Load model with appropriate loader
-        // TODO: Add GLTFLoader, OBJLoader, etc. based on file extension
-        console.log(`Three.js scene ready. Add loader for ${extension} format:`, modelUrl);
-
         // Handle window resize
-        window.addEventListener('resize', () => {
-            const width = canvas.clientWidth;
-            const height = canvas.clientHeight;
-            camera.aspect = width / height;
-            camera.updateProjectionMatrix();
-            renderer.setSize(width, height);
+        viewer.resizeHandler = () => {
+            const w = canvas.clientWidth;
+            const h = canvas.clientHeight;
+            if (w && h) {
+                camera.aspect = w / h;
+                camera.updateProjectionMatrix();
+                renderer.setSize(w, h);
+            }
+        };
+        window.addEventListener('resize', viewer.resizeHandler);
+
+        // Load GLB model
+        const loader = new GLTFLoader();
+        loader.load(modelUrl, (gltf) => {
+            const model = gltf.scene;
+
+            // Enable shadows on all meshes
+            model.traverse((child) => {
+                if (child.isMesh) {
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+                }
+            });
+
+            // Auto-center and scale the model
+            const box = new THREE.Box3().setFromObject(model);
+            const center = box.getCenter(new THREE.Vector3());
+            const size = box.getSize(new THREE.Vector3());
+            const maxDim = Math.max(size.x, size.y, size.z);
+            const scale = 2 / maxDim;
+            model.scale.setScalar(scale);
+
+            // Position model so its bottom sits at y=0
+            const scaledBox = new THREE.Box3().setFromObject(model);
+            model.position.x = -center.x * scale;
+            model.position.z = -center.z * scale;
+            model.position.y = -scaledBox.min.y;
+
+            scene.add(model);
+
+            // Adjust camera to frame the model
+            const finalBox = new THREE.Box3().setFromObject(model);
+            const finalSize = finalBox.getSize(new THREE.Vector3());
+            const finalCenter = finalBox.getCenter(new THREE.Vector3());
+            const distance = Math.max(finalSize.x, finalSize.y, finalSize.z) * 2;
+            camera.position.set(distance * 0.7, distance * 0.5, distance * 0.7);
+            controls.target.copy(finalCenter);
+            controls.update();
+
+            console.log('GLB model loaded successfully');
+        }, undefined, (error) => {
+            console.error('Error loading GLB model:', error);
+            const statusElement = document.getElementById('model-status');
+            if (statusElement) {
+                statusElement.classList.remove('d-none');
+                statusElement.innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="bi bi-exclamation-triangle"></i> Error loading 3D model
+                    </div>
+                `;
+            }
         });
     });
 }
@@ -436,7 +487,6 @@ function fetchSkyboxes() {
                     selectedOption.dataset.shadowSoftness
                 );
             } else {
-                // Remove skybox if "Select a skybox" is chosen
                 removeSkybox();
             }
         });
@@ -449,10 +499,8 @@ function fetchSkyboxes() {
 }
 
 function applySkybox(id, name, extension, height, exposure, shadowIntensity, shadowSoftness) {
-    const modelViewer = document.getElementById('usd-viewer');
-
-    if (!modelViewer) {
-        console.error('Model viewer not found');
+    if (!viewer) {
+        console.error('Viewer not initialized');
         return;
     }
 
@@ -472,73 +520,91 @@ function applySkybox(id, name, extension, height, exposure, shadowIntensity, sha
         const record = response.records[0];
         const imageUrl = record.fields.image?.value?.downloadURL;
 
-        if (imageUrl) {
-            console.log('Skybox image URL:', imageUrl);
-            console.log('Skybox extension:', extension);
-            console.log('Skybox height:', height || 'none');
-
-            // Append file extension as URL fragment so model-viewer uses the correct loader
-            // (CloudKit URLs don't include the original file extension)
-            const skyboxUrl = imageUrl + '#.'+  extension;
-
-            // Set skybox image
-            modelViewer.setAttribute('skybox-image', skyboxUrl);
-            modelViewer.setAttribute('alt', name);
-
-            // Set exposure if specified
-            if (exposure) {
-                modelViewer.setAttribute('exposure', exposure);
-                console.log('Set exposure:', exposure);
-            }
-
-            // Set shadow intensity if specified
-            if (shadowIntensity) {
-                modelViewer.setAttribute('shadow-intensity', shadowIntensity);
-                console.log('Set shadow intensity:', shadowIntensity);
-            }
-
-            // Set shadow softness if specified
-            if (shadowSoftness) {
-                modelViewer.setAttribute('shadow-softness', shadowSoftness);
-                console.log('Set shadow softness:', shadowSoftness);
-            }
-
-            // Set skybox height for ground projection if specified
-            if (height) {
-                modelViewer.setAttribute('skybox-height', `${height}m`);
-                console.log('Using ground-projected skybox with height:', height);
-            } else {
-                modelViewer.removeAttribute('skybox-height');
-            }
-
-            console.log('Skybox attributes set. Current attributes:', {
-                'skybox-image': modelViewer.getAttribute('skybox-image'),
-                'skybox-height': modelViewer.getAttribute('skybox-height'),
-                'exposure': modelViewer.getAttribute('exposure'),
-                'shadow-intensity': modelViewer.getAttribute('shadow-intensity')
-            });
-        } else {
+        if (!imageUrl) {
             console.error('No image URL found for skybox');
+            return;
         }
+
+        console.log('Skybox image URL:', imageUrl);
+        console.log('Skybox extension:', extension);
+        console.log('Skybox height:', height || 'none');
+
+        // Choose loader based on file extension
+        const isHDR = extension.toLowerCase() === 'hdr';
+        const loader = isHDR ? new HDRLoader() : new THREE.TextureLoader();
+
+        // Append file extension as URL fragment so the loader recognizes the format
+        // (CloudKit URLs don't include the original file extension)
+        const skyboxUrl = imageUrl + '#.' + extension;
+
+        loader.load(skyboxUrl, (texture) => {
+            texture.mapping = THREE.EquirectangularReflectionMapping;
+
+            // Remove previous skybox if any
+            if (viewer.groundedSkybox) {
+                viewer.scene.remove(viewer.groundedSkybox);
+                viewer.groundedSkybox = null;
+            }
+
+            // Set environment for PBR lighting
+            viewer.scene.environment = texture;
+
+            // Apply exposure
+            if (exposure) {
+                viewer.renderer.toneMappingExposure = parseFloat(exposure);
+            } else {
+                viewer.renderer.toneMappingExposure = 1.0;
+            }
+
+            // Apply shadow intensity
+            if (shadowIntensity) {
+                viewer.shadowPlane.material.opacity = parseFloat(shadowIntensity);
+            } else {
+                viewer.shadowPlane.material.opacity = 0.3;
+            }
+
+            if (height) {
+                // Ground-projected skybox
+                const skyboxHeight = parseFloat(height);
+                const skyboxRadius = 100;
+                const groundedSkybox = new GroundedSkybox(texture, skyboxHeight, skyboxRadius);
+                groundedSkybox.position.y = skyboxHeight - 0.01;
+                viewer.scene.add(groundedSkybox);
+                viewer.groundedSkybox = groundedSkybox;
+                viewer.scene.background = null;
+                console.log('Using ground-projected skybox with height:', skyboxHeight);
+            } else {
+                // Regular surrounding skybox
+                viewer.scene.background = texture;
+            }
+
+            console.log('Skybox applied successfully');
+        }, undefined, (error) => {
+            console.error('Error loading skybox texture:', error);
+        });
     }).catch((error) => {
         console.error('Error fetching skybox image for', id, error);
     });
 }
 
 function removeSkybox() {
-    const modelViewer = document.getElementById('usd-viewer');
-
-    if (!modelViewer) {
+    if (!viewer) {
         return;
     }
 
     console.log('Removing skybox');
 
-    // Remove skybox attributes
-    modelViewer.removeAttribute('skybox-image');
-    modelViewer.removeAttribute('skybox-height');
+    // Remove grounded skybox mesh
+    if (viewer.groundedSkybox) {
+        viewer.scene.remove(viewer.groundedSkybox);
+        viewer.groundedSkybox = null;
+    }
 
-    // Reset to default values
-    modelViewer.setAttribute('exposure', '1');
-    modelViewer.setAttribute('shadow-intensity', '1');
-}   
+    // Reset scene background and environment
+    viewer.scene.background = new THREE.Color(0xf8f9fa);
+    viewer.scene.environment = null;
+
+    // Reset exposure and shadow
+    viewer.renderer.toneMappingExposure = 1.0;
+    viewer.shadowPlane.material.opacity = 0.3;
+}
