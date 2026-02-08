@@ -24,6 +24,12 @@ console.log('CloudKit configured and initialized');
 // Module-level Three.js state (shared between viewer and skybox functions)
 let viewer = null;
 
+// Persisted skybox selection (survives model switches)
+let currentSkybox = null;
+
+// Saved camera direction for preserving orientation across model switches
+let savedCameraDir = null;
+
 document.addEventListener('DOMContentLoaded', () => {
     const modelList = document.getElementById('model-list');
 
@@ -150,6 +156,14 @@ function displayModelDetails(id, name, description, extension, useAltModel) {
     const navbarTitle = document.getElementById('navbar-title');
     if (navbarTitle) {
         navbarTitle.textContent = name;
+    }
+
+    // Save camera direction before disposing (for orientation persistence with skybox)
+    if (viewer && currentSkybox && viewer.controls) {
+        const dir = new THREE.Vector3().subVectors(viewer.camera.position, viewer.controls.target).normalize();
+        savedCameraDir = dir;
+    } else {
+        savedCameraDir = null;
     }
 
     // Clean up previous viewer
@@ -399,6 +413,12 @@ function initializeViewer(modelUrl) {
         };
         window.addEventListener('resize', viewer.resizeHandler);
 
+        // Apply persisted skybox immediately (before model loads)
+        if (currentSkybox && currentSkybox.texture) {
+            applySkyboxTexture(currentSkybox.texture, currentSkybox.height,
+                currentSkybox.exposure, currentSkybox.shadowIntensity, currentSkybox.shadowSoftness);
+        }
+
         // Load GLB model
         const loader = new GLTFLoader();
         loader.load(modelUrl, (gltf) => {
@@ -427,7 +447,11 @@ function initializeViewer(modelUrl) {
             const finalCenter = finalBox.getCenter(new THREE.Vector3());
             const maxDim = Math.max(finalSize.x, finalSize.y, finalSize.z);
             const distance = maxDim * 2;
-            camera.position.set(distance * 0.7, distance * 0.5, distance * 0.7);
+            if (savedCameraDir && currentSkybox) {
+                camera.position.copy(finalCenter).addScaledVector(savedCameraDir, distance);
+            } else {
+                camera.position.set(distance * 0.7, distance * 0.5, distance * 0.7);
+            }
             camera.far = Math.max(maxDim * 100, 1000);
             camera.updateProjectionMatrix();
             controls.target.copy(finalCenter);
@@ -483,6 +507,13 @@ function initializeViewer(modelUrl) {
                     yawLabel.textContent = degrees + '\u00B0';
                     updateModelYaw(yaw);
                 });
+            }
+
+            // Re-apply persisted skybox for the new model
+            if (currentSkybox) {
+                applySkybox(currentSkybox.id, currentSkybox.name, currentSkybox.extension,
+                    currentSkybox.height, currentSkybox.exposure,
+                    currentSkybox.shadowIntensity, currentSkybox.shadowSoftness);
             }
 
             console.log('GLB model loaded, max dimension:', maxDim);
@@ -578,19 +609,33 @@ function fetchSkyboxes() {
         dropdown.addEventListener('change', (event) => {
             const selectedOption = event.target.options[event.target.selectedIndex];
             if (selectedOption.value) {
-                applySkybox(
-                    selectedOption.value,
-                    selectedOption.textContent,
-                    selectedOption.dataset.extension,
-                    selectedOption.dataset.height,
-                    selectedOption.dataset.exposure,
-                    selectedOption.dataset.shadowIntensity,
-                    selectedOption.dataset.shadowSoftness
-                );
+                currentSkybox = {
+                    id: selectedOption.value,
+                    name: selectedOption.textContent,
+                    extension: selectedOption.dataset.extension,
+                    height: selectedOption.dataset.height,
+                    exposure: selectedOption.dataset.exposure,
+                    shadowIntensity: selectedOption.dataset.shadowIntensity,
+                    shadowSoftness: selectedOption.dataset.shadowSoftness
+                };
+                applySkybox(currentSkybox.id, currentSkybox.name, currentSkybox.extension,
+                    currentSkybox.height, currentSkybox.exposure,
+                    currentSkybox.shadowIntensity, currentSkybox.shadowSoftness);
             } else {
+                currentSkybox = null;
                 removeSkybox();
             }
         });
+
+        // Restore previous skybox selection if switching models
+        if (currentSkybox) {
+            for (const opt of dropdown.options) {
+                if (opt.value === currentSkybox.id) {
+                    dropdown.value = currentSkybox.id;
+                    break;
+                }
+            }
+        }
 
         console.log(`Loaded ${response.records.length} skyboxes`);
     }).catch(error => {
@@ -605,7 +650,14 @@ function applySkybox(id, name, extension, height, exposure, shadowIntensity, sha
         return;
     }
 
-    console.log('Applying skybox:', name);
+    // Reuse cached texture if same skybox is being re-applied (e.g. model switch)
+    if (currentSkybox && currentSkybox.texture && currentSkybox.id === id) {
+        console.log('Reusing cached texture for skybox:', name);
+        applySkyboxTexture(currentSkybox.texture, height, exposure, shadowIntensity, shadowSoftness);
+        return;
+    }
+
+    console.log('Loading skybox:', name);
 
     // Fetch the skybox image from CloudKit
     const options = {
@@ -625,10 +677,6 @@ function applySkybox(id, name, extension, height, exposure, shadowIntensity, sha
             console.error('No image URL found for skybox');
             return;
         }
-
-        console.log('Skybox image URL:', imageUrl);
-        console.log('Skybox extension:', extension);
-        console.log('Skybox height:', height || 'none');
 
         // Choose loader based on file extension
         const isHDR = extension.toLowerCase() === 'hdr';
@@ -655,61 +703,69 @@ function applySkybox(id, name, extension, height, exposure, shadowIntensity, sha
 
             texture.mapping = THREE.EquirectangularReflectionMapping;
 
-            // Dispose previous texture and skybox to free GPU memory
-            if (viewer.skyboxTexture) {
-                viewer.skyboxTexture.dispose();
-            }
-            if (viewer.groundedSkybox) {
-                viewer.groundedSkybox.material.dispose();
-                viewer.groundedSkybox.geometry.dispose();
-                viewer.scene.remove(viewer.groundedSkybox);
-                viewer.groundedSkybox = null;
-            }
-            viewer.skyboxTexture = texture;
-
-            // Set environment for PBR lighting
-            viewer.scene.environment = texture;
-
-            // Apply exposure and sync slider
-            const expValue = exposure ? parseFloat(exposure) : 1.0;
-            viewer.renderer.toneMappingExposure = expValue;
-            const exposureSlider = document.getElementById('exposure-slider');
-            const exposureLabel = document.getElementById('exposure-value');
-            if (exposureSlider) {
-                exposureSlider.value = Math.log10(expValue);
-                exposureLabel.textContent = expValue.toFixed(1);
+            // Cache the texture on currentSkybox for reuse on model switch
+            if (currentSkybox && currentSkybox.id === id) {
+                currentSkybox.texture = texture;
             }
 
-            // Apply shadow intensity
-            if (shadowIntensity) {
-                viewer.shadowPlane.material.opacity = parseFloat(shadowIntensity);
-            } else {
-                viewer.shadowPlane.material.opacity = 0.3;
-            }
-
-            if (height) {
-                // Ground-projected skybox, radius scales with model size
-                const skyboxHeight = parseFloat(height);
-                const modelDim = viewer.modelMaxDim || 2;
-                const skyboxRadius = Math.max(modelDim * 50, 100);
-                const groundedSkybox = new GroundedSkybox(texture, skyboxHeight, skyboxRadius);
-                groundedSkybox.position.y = skyboxHeight - 0.01;
-                viewer.scene.add(groundedSkybox);
-                viewer.groundedSkybox = groundedSkybox;
-                viewer.scene.background = null;
-                console.log('Using ground-projected skybox with height:', skyboxHeight);
-            } else {
-                // Regular surrounding skybox
-                viewer.scene.background = texture;
-            }
-
-            console.log('Skybox applied successfully');
+            applySkyboxTexture(texture, height, exposure, shadowIntensity, shadowSoftness);
         }, undefined, (error) => {
             console.error('Error loading skybox texture:', error);
         });
     }).catch((error) => {
         console.error('Error fetching skybox image for', id, error);
     });
+}
+
+function applySkyboxTexture(texture, height, exposure, shadowIntensity, shadowSoftness) {
+    // Dispose previous skybox geometry (but not the texture if it's being reused)
+    if (viewer.skyboxTexture && viewer.skyboxTexture !== texture) {
+        viewer.skyboxTexture.dispose();
+    }
+    if (viewer.groundedSkybox) {
+        viewer.groundedSkybox.material.dispose();
+        viewer.groundedSkybox.geometry.dispose();
+        viewer.scene.remove(viewer.groundedSkybox);
+        viewer.groundedSkybox = null;
+    }
+    viewer.skyboxTexture = texture;
+
+    // Set environment for PBR lighting
+    viewer.scene.environment = texture;
+
+    // Apply exposure and sync slider
+    const expValue = exposure ? parseFloat(exposure) : 1.0;
+    viewer.renderer.toneMappingExposure = expValue;
+    const exposureSlider = document.getElementById('exposure-slider');
+    const exposureLabel = document.getElementById('exposure-value');
+    if (exposureSlider) {
+        exposureSlider.value = Math.log10(expValue);
+        exposureLabel.textContent = expValue.toFixed(1);
+    }
+
+    // Apply shadow intensity
+    if (shadowIntensity) {
+        viewer.shadowPlane.material.opacity = parseFloat(shadowIntensity);
+    } else {
+        viewer.shadowPlane.material.opacity = 0.3;
+    }
+
+    if (height) {
+        // Ground-projected skybox, radius scales with model size
+        const skyboxHeight = parseFloat(height);
+        const modelDim = viewer.modelMaxDim || 2;
+        const skyboxRadius = Math.max(modelDim * 50, 100);
+        const groundedSkybox = new GroundedSkybox(texture, skyboxHeight, skyboxRadius);
+        groundedSkybox.position.y = skyboxHeight - 0.01;
+        viewer.scene.add(groundedSkybox);
+        viewer.groundedSkybox = groundedSkybox;
+        viewer.scene.background = null;
+    } else {
+        // Regular surrounding skybox
+        viewer.scene.background = texture;
+    }
+
+    console.log('Skybox applied successfully');
 }
 
 function removeSkybox() {
