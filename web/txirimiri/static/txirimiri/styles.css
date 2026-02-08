@@ -29,6 +29,26 @@ body {
     object-fit: cover;
 }
 
+/* View options panel - fixed below navbar button */
+.view-options-panel {
+    position: fixed;
+    top: 56px;
+    right: 12px;
+    z-index: 1050;
+    min-width: 220px;
+    opacity: 0;
+    transform: translateY(-8px);
+    pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.view-options-panel.visible {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+}
+
 /* Line clamp for description truncation (no Bootstrap equivalent) */
 .line-clamp-2 {
     display: -webkit-box;

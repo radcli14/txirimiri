@@ -180,15 +180,11 @@ function displayModelDetails(id, name, description, extension, useAltModel) {
 
     const mainContent = document.getElementById('main-content');
 
-    // Get thumbnail URL from the list item if already loaded
-    const listItemImg = document.getElementById(`thumbnail-${id}`);
-    const thumbnailSrc = listItemImg && listItemImg.src ? listItemImg.src : null;
-
     // Update main content with model details
     mainContent.innerHTML = `
         <div class="container py-4">
             <div class="position-relative">
-                <div id="view-options-panel" class="position-absolute top-0 end-0 d-none p-2 rounded shadow-sm bg-body-tertiary" style="z-index: 10; min-width: 220px;">
+                <div id="view-options-panel" class="view-options-panel p-2 rounded bg-body-tertiary">
                     <div class="mb-2">
                         <label for="skybox-dropdown" class="form-label mb-1 small fw-semibold">Skybox</label>
                         <select id="skybox-dropdown" class="form-select form-select-sm">
@@ -230,14 +226,6 @@ function displayModelDetails(id, name, description, extension, useAltModel) {
             <p class="lead">${description}</p>
             <p class="text-muted mb-3">Format: ${extension.toUpperCase()}</p>
             <div class="mb-4">
-                <h5>Current Thumbnail</h5>
-                <div class="d-flex align-items-center justify-content-center bg-light rounded p-3" style="max-width: 300px;">
-                    ${thumbnailSrc
-                        ? `<img src="${thumbnailSrc}" alt="${name} thumbnail" class="img-fluid rounded">`
-                        : '<i class="bi bi-box display-1 text-secondary"></i>'}
-                </div>
-            </div>
-            <div class="mb-4">
                 <h5>Screenshots</h5>
                 <div id="screenshot-gallery" class="d-flex flex-wrap gap-2"></div>
             </div>
@@ -249,9 +237,14 @@ function displayModelDetails(id, name, description, extension, useAltModel) {
     const viewOptionsPanel = document.getElementById('view-options-panel');
     if (viewOptionsBtn) {
         viewOptionsBtn.classList.remove('d-none');
-        viewOptionsBtn.onclick = () => {
-            viewOptionsPanel.classList.toggle('d-none');
+        viewOptionsBtn.onclick = (e) => {
+            e.stopPropagation();
+            viewOptionsPanel.classList.toggle('visible');
         };
+        viewOptionsPanel.addEventListener('click', (e) => e.stopPropagation());
+        document.addEventListener('click', () => {
+            viewOptionsPanel.classList.remove('visible');
+        });
     }
 
     // Asynchronously fetch the model file and skyboxes
@@ -892,6 +885,12 @@ function generateScreenshot() {
         image_base64: base64,
     };
 
+    // Open image in a new tab immediately (must be synchronous for mobile popup blocker)
+    const blob = dataUrlToBlob(dataUrl);
+    const blobUrl = URL.createObjectURL(blob);
+    window.open(blobUrl, '_blank');
+
+    // Save to backend in the background
     const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
     fetch('/api/screenshots/save/', {
         method: 'POST',
@@ -900,20 +899,22 @@ function generateScreenshot() {
     })
         .then(r => r.json())
         .then(data => {
-            // Trigger download
-            const modelName = (payload.model3d_name || 'Model').replace(/[^a-zA-Z0-9]/g, '');
-            const filename = `Screenshot${data.id}_${modelName}.jpg`;
-            const link = document.createElement('a');
-            link.href = dataUrl;
-            link.download = filename;
-            link.click();
-
-            // Add to gallery
             addScreenshotToGallery({ ...payload, id: data.id, image_base64: base64 });
         })
         .catch(error => {
             console.error('Error saving screenshot:', error);
         });
+}
+
+function dataUrlToBlob(dataUrl) {
+    const parts = dataUrl.split(',');
+    const mime = parts[0].match(/:(.*?);/)[1];
+    const bytes = atob(parts[1]);
+    const array = new Uint8Array(bytes.length);
+    for (let i = 0; i < bytes.length; i++) {
+        array[i] = bytes.charCodeAt(i);
+    }
+    return new Blob([array], { type: mime });
 }
 
 function loadScreenshots(recordName) {
