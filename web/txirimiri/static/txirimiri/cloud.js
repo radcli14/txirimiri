@@ -30,6 +30,9 @@ let currentSkybox = null;
 // Saved camera direction for preserving orientation across model switches
 let savedCameraDir = null;
 
+// Current model's CloudKit record name (for screenshot API)
+let model3dRecordName = null;
+
 document.addEventListener('DOMContentLoaded', () => {
     const modelList = document.getElementById('model-list');
 
@@ -152,6 +155,9 @@ function fetchThumbnail(id, itemElement) {
 }
 
 function displayModelDetails(id, name, description, extension, useAltModel) {
+    // Track current model record name for screenshot API
+    model3dRecordName = id;
+
     // Update navbar title
     const navbarTitle = document.getElementById('navbar-title');
     if (navbarTitle) {
@@ -218,6 +224,9 @@ function displayModelDetails(id, name, description, extension, useAltModel) {
                     </div>
                 </div>
             </div>
+            <button id="screenshot-btn" class="btn btn-outline-primary mb-4 d-none">
+                <i class="bi bi-camera"></i> Generate Screenshot
+            </button>
             <p class="lead">${description}</p>
             <p class="text-muted mb-3">Format: ${extension.toUpperCase()}</p>
             <div class="mb-4">
@@ -227,6 +236,10 @@ function displayModelDetails(id, name, description, extension, useAltModel) {
                         ? `<img src="${thumbnailSrc}" alt="${name} thumbnail" class="img-fluid rounded">`
                         : '<i class="bi bi-box display-1 text-secondary"></i>'}
                 </div>
+            </div>
+            <div class="mb-4">
+                <h5>Screenshots</h5>
+                <div id="screenshot-gallery" class="d-flex flex-wrap gap-2"></div>
             </div>
         </div>
     `;
@@ -244,6 +257,7 @@ function displayModelDetails(id, name, description, extension, useAltModel) {
     // Asynchronously fetch the model file and skyboxes
     fetchModel(id, extension, useAltModel);
     fetchSkyboxes();
+    loadScreenshots(id);
 }
 
 function fetchModel(id, extension, useAltModel) {
@@ -529,6 +543,13 @@ function initializeViewer(modelUrl) {
                 applySkybox(currentSkybox.id, currentSkybox.name, currentSkybox.extension,
                     currentSkybox.height, currentSkybox.exposure,
                     currentSkybox.shadowIntensity, currentSkybox.shadowSoftness);
+            }
+
+            // Show and wire up screenshot button
+            const screenshotBtn = document.getElementById('screenshot-btn');
+            if (screenshotBtn) {
+                screenshotBtn.classList.remove('d-none');
+                screenshotBtn.addEventListener('click', generateScreenshot);
             }
 
             console.log('GLB model loaded, max dimension:', maxDim);
@@ -831,4 +852,137 @@ function removeSkybox() {
         lightSliderEl.value = 0;
         lightLabelEl.textContent = '1.0';
     }
+}
+
+function generateScreenshot() {
+    if (!viewer || !viewer.model) return;
+
+    const canvas = document.getElementById('model-canvas');
+    const origWidth = canvas.clientWidth;
+    const origHeight = canvas.clientHeight;
+
+    // Render at 512x512
+    const size = 512;
+    viewer.renderer.setSize(size, size);
+    viewer.camera.aspect = 1;
+    viewer.camera.updateProjectionMatrix();
+    viewer.renderer.render(viewer.scene, viewer.camera);
+    const dataUrl = viewer.renderer.domElement.toDataURL('image/jpeg', 0.9);
+
+    // Restore original canvas size
+    viewer.renderer.setSize(origWidth, origHeight);
+    viewer.camera.aspect = origWidth / origHeight;
+    viewer.camera.updateProjectionMatrix();
+
+    const base64 = dataUrl.split(',')[1];
+
+    const payload = {
+        model3d_record_name: model3dRecordName,
+        model3d_name: document.getElementById('navbar-title').textContent.trim(),
+        skybox_record_name: currentSkybox ? currentSkybox.id : '',
+        skybox_name: currentSkybox ? currentSkybox.name : '',
+        model_scale: viewer.model.scale.x,
+        yaw_angle: viewer.model.rotation.y,
+        camera_position_x: viewer.camera.position.x,
+        camera_position_y: viewer.camera.position.y,
+        camera_position_z: viewer.camera.position.z,
+        camera_target_x: viewer.controls.target.x,
+        camera_target_y: viewer.controls.target.y,
+        camera_target_z: viewer.controls.target.z,
+        image_base64: base64,
+    };
+
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    fetch('/api/screenshots/save/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+        body: JSON.stringify(payload),
+    })
+        .then(r => r.json())
+        .then(data => {
+            // Trigger download
+            const modelName = (payload.model3d_name || 'Model').replace(/[^a-zA-Z0-9]/g, '');
+            const filename = `Screenshot${data.id}_${modelName}.jpg`;
+            const link = document.createElement('a');
+            link.href = dataUrl;
+            link.download = filename;
+            link.click();
+
+            // Add to gallery
+            addScreenshotToGallery({ ...payload, id: data.id, image_base64: base64 });
+        })
+        .catch(error => {
+            console.error('Error saving screenshot:', error);
+        });
+}
+
+function loadScreenshots(recordName) {
+    fetch(`/api/screenshots/?model3d_record_name=${encodeURIComponent(recordName)}`)
+        .then(r => r.json())
+        .then(data => {
+            const gallery = document.getElementById('screenshot-gallery');
+            if (!gallery) return;
+            gallery.innerHTML = '';
+            if (data.screenshots && data.screenshots.length > 0) {
+                data.screenshots.forEach(s => addScreenshotToGallery(s));
+            }
+        })
+        .catch(error => {
+            console.error('Error loading screenshots:', error);
+        });
+}
+
+function addScreenshotToGallery(data) {
+    const gallery = document.getElementById('screenshot-gallery');
+    if (!gallery) return;
+
+    const img = document.createElement('img');
+    img.src = `data:image/jpeg;base64,${data.image_base64}`;
+    img.alt = `Screenshot ${data.id}`;
+    img.className = 'rounded border';
+    img.style.width = '128px';
+    img.style.height = '128px';
+    img.style.objectFit = 'cover';
+    img.style.cursor = 'pointer';
+    img.addEventListener('click', () => restoreScreenshot(data));
+    gallery.appendChild(img);
+}
+
+function restoreScreenshot(data) {
+    if (!viewer || !viewer.model) return;
+
+    // Restore skybox
+    const dropdown = document.getElementById('skybox-dropdown');
+    if (dropdown) {
+        const targetSkybox = data.skybox_record_name || '';
+        if (dropdown.value !== targetSkybox) {
+            dropdown.value = targetSkybox;
+            dropdown.dispatchEvent(new Event('change'));
+        }
+    }
+
+    // Restore scale
+    const scale = data.model_scale;
+    updateModelScale(scale);
+    const scaleSlider = document.getElementById('scale-slider');
+    const scaleLabel = document.getElementById('scale-value');
+    if (scaleSlider) {
+        scaleSlider.value = Math.log10(scale);
+        scaleLabel.textContent = scale.toFixed(1) + 'x';
+    }
+
+    // Restore yaw
+    const yaw = data.yaw_angle;
+    updateModelYaw(yaw);
+    const yawSlider = document.getElementById('yaw-slider');
+    const yawLabel = document.getElementById('yaw-value');
+    if (yawSlider) {
+        yawSlider.value = yaw;
+        yawLabel.textContent = (yaw * 180 / Math.PI).toFixed(0) + '\u00B0';
+    }
+
+    // Restore camera
+    viewer.camera.position.set(data.camera_position_x, data.camera_position_y, data.camera_position_z);
+    viewer.controls.target.set(data.camera_target_x, data.camera_target_y, data.camera_target_z);
+    viewer.controls.update();
 }
