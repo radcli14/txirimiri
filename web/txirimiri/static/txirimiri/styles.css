@@ -29,6 +29,17 @@ body {
     object-fit: cover;
 }
 
+/* Sidebar model list items - no borders/padding, light divider between */
+#model-list .list-group-item {
+    padding: 8px;
+    border: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+#model-list .list-group-item:first-child {
+    border-top: none;
+}
+
 /* View options panel - fixed below navbar button */
 .view-options-panel {
     position: fixed;
