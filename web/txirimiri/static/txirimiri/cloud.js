@@ -168,14 +168,24 @@ function displayModelDetails(id, name, description, extension, useAltModel) {
     mainContent.innerHTML = `
         <div class="container py-4">
             <div class="position-relative">
-                <div id="skybox-selector" class="position-absolute top-0 end-0" style="z-index: 10;">
-                    <select id="skybox-dropdown" class="form-select form-select-sm" style="width: auto;">
-                        <option value="">Loading skyboxes...</option>
-                    </select>
-                    <div class="d-flex align-items-center gap-2 mt-1">
-                        <label for="scale-slider" class="form-label mb-0 small text-nowrap">Scale</label>
-                        <input type="range" id="scale-slider" class="form-range" min="-1" max="1" step="0.01" value="0" style="width: 120px;">
-                        <span id="scale-value" class="small text-nowrap">1.0x</span>
+                <div id="view-options-panel" class="position-absolute top-0 end-0 d-none p-2 rounded shadow-sm bg-body-tertiary" style="z-index: 10; min-width: 220px;">
+                    <div class="mb-2">
+                        <label for="skybox-dropdown" class="form-label mb-1 small fw-semibold">Skybox</label>
+                        <select id="skybox-dropdown" class="form-select form-select-sm">
+                            <option value="">Loading skyboxes...</option>
+                        </select>
+                    </div>
+                    <div class="mb-2">
+                        <label for="exposure-slider" class="form-label mb-1 small fw-semibold">Exposure <span id="exposure-value" class="fw-normal text-muted">1.0</span></label>
+                        <input type="range" id="exposure-slider" class="form-range" min="-1" max="1" step="0.01" value="0">
+                    </div>
+                    <div class="mb-2">
+                        <label for="scale-slider" class="form-label mb-1 small fw-semibold">Scale <span id="scale-value" class="fw-normal text-muted">1.0x</span></label>
+                        <input type="range" id="scale-slider" class="form-range" min="-1" max="1" step="0.01" value="0">
+                    </div>
+                    <div class="mb-0">
+                        <label for="yaw-slider" class="form-label mb-1 small fw-semibold">Yaw <span id="yaw-value" class="fw-normal text-muted">0.0°</span></label>
+                        <input type="range" id="yaw-slider" class="form-range" min="${-Math.PI}" max="${Math.PI}" step="0.01" value="0">
                     </div>
                 </div>
                 <div id="viewer-container" class="mb-4 d-none">
@@ -202,6 +212,16 @@ function displayModelDetails(id, name, description, extension, useAltModel) {
             </div>
         </div>
     `;
+
+    // Show the view options button in the navbar and wire up toggle
+    const viewOptionsBtn = document.getElementById('view-options-btn');
+    const viewOptionsPanel = document.getElementById('view-options-panel');
+    if (viewOptionsBtn) {
+        viewOptionsBtn.classList.remove('d-none');
+        viewOptionsBtn.onclick = () => {
+            viewOptionsPanel.classList.toggle('d-none');
+        };
+    }
 
     // Asynchronously fetch the model file and skyboxes
     fetchModel(id, extension, useAltModel);
@@ -428,15 +448,39 @@ function initializeViewer(modelUrl) {
             viewer.modelOriginalBoxMin = box.min.clone();
             viewer.modelMaxDim = maxDim;
 
+            // Wire up the exposure slider
+            const exposureSlider = document.getElementById('exposure-slider');
+            const exposureLabel = document.getElementById('exposure-value');
+            if (exposureSlider) {
+                exposureSlider.addEventListener('input', () => {
+                    const exp = Math.pow(10, parseFloat(exposureSlider.value));
+                    exposureLabel.textContent = exp.toFixed(1);
+                    viewer.renderer.toneMappingExposure = exp;
+                });
+            }
+
             // Wire up the scale slider
-            const slider = document.getElementById('scale-slider');
+            const scaleSlider = document.getElementById('scale-slider');
             const scaleLabel = document.getElementById('scale-value');
-            if (slider) {
-                slider.value = 0;
-                slider.addEventListener('input', () => {
-                    const scale = Math.pow(10, parseFloat(slider.value));
+            if (scaleSlider) {
+                scaleSlider.value = 0;
+                scaleSlider.addEventListener('input', () => {
+                    const scale = Math.pow(10, parseFloat(scaleSlider.value));
                     scaleLabel.textContent = scale.toFixed(1) + 'x';
                     updateModelScale(scale);
+                });
+            }
+
+            // Wire up the yaw slider
+            const yawSlider = document.getElementById('yaw-slider');
+            const yawLabel = document.getElementById('yaw-value');
+            if (yawSlider) {
+                yawSlider.value = 0;
+                yawSlider.addEventListener('input', () => {
+                    const yaw = parseFloat(yawSlider.value);
+                    const degrees = (yaw * 180 / Math.PI).toFixed(0);
+                    yawLabel.textContent = degrees + '\u00B0';
+                    updateModelYaw(yaw);
                 });
             }
 
@@ -476,6 +520,11 @@ function updateModelScale(scale) {
     viewer.controls.target.set(oldTarget.x * ratio, oldTarget.y * ratio, oldTarget.z * ratio);
     viewer.camera.far = Math.max(newMaxDim * 100, 1000);
     viewer.camera.updateProjectionMatrix();
+}
+
+function updateModelYaw(yaw) {
+    if (!viewer || !viewer.model) return;
+    viewer.model.rotation.y = yaw;
 }
 
 function fetchSkyboxes() {
@@ -600,11 +649,14 @@ function applySkybox(id, name, extension, height, exposure, shadowIntensity, sha
             // Set environment for PBR lighting
             viewer.scene.environment = texture;
 
-            // Apply exposure
-            if (exposure) {
-                viewer.renderer.toneMappingExposure = parseFloat(exposure);
-            } else {
-                viewer.renderer.toneMappingExposure = 1.0;
+            // Apply exposure and sync slider
+            const expValue = exposure ? parseFloat(exposure) : 1.0;
+            viewer.renderer.toneMappingExposure = expValue;
+            const exposureSlider = document.getElementById('exposure-slider');
+            const exposureLabel = document.getElementById('exposure-value');
+            if (exposureSlider) {
+                exposureSlider.value = Math.log10(expValue);
+                exposureLabel.textContent = expValue.toFixed(1);
             }
 
             // Apply shadow intensity
@@ -656,7 +708,13 @@ function removeSkybox() {
     viewer.scene.background = new THREE.Color(0xf8f9fa);
     viewer.scene.environment = null;
 
-    // Reset exposure and shadow
+    // Reset exposure, shadow, and sync slider
     viewer.renderer.toneMappingExposure = 1.0;
     viewer.shadowPlane.material.opacity = 0.3;
+    const exposureSlider = document.getElementById('exposure-slider');
+    const exposureLabel = document.getElementById('exposure-value');
+    if (exposureSlider) {
+        exposureSlider.value = 0;
+        exposureLabel.textContent = '1.0';
+    }
 }
