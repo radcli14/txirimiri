@@ -937,16 +937,64 @@ function addScreenshotToGallery(data) {
     const gallery = document.getElementById('screenshot-gallery');
     if (!gallery) return;
 
+    const dataUrl = `data:image/jpeg;base64,${data.image_base64}`;
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'screenshot-item position-relative';
+    wrapper.style.width = '128px';
+    wrapper.style.height = '128px';
+
     const img = document.createElement('img');
-    img.src = `data:image/jpeg;base64,${data.image_base64}`;
+    img.src = dataUrl;
     img.alt = `Screenshot ${data.id}`;
-    img.className = 'rounded border';
-    img.style.width = '128px';
-    img.style.height = '128px';
+    img.className = 'rounded border w-100 h-100';
     img.style.objectFit = 'cover';
     img.style.cursor = 'pointer';
     img.addEventListener('click', () => restoreScreenshot(data));
-    gallery.appendChild(img);
+    wrapper.appendChild(img);
+
+    const actions = document.createElement('div');
+    actions.className = 'screenshot-actions position-absolute bottom-0 start-0 w-100 d-flex justify-content-around p-1';
+
+    const viewBtn = document.createElement('button');
+    viewBtn.className = 'btn btn-sm btn-light';
+    viewBtn.innerHTML = '<i class="bi bi-eye"></i>';
+    viewBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const blob = dataUrlToBlob(dataUrl);
+        window.open(URL.createObjectURL(blob), '_blank');
+    });
+    actions.appendChild(viewBtn);
+
+    const deleteBtn = document.createElement('button');
+    deleteBtn.className = 'btn btn-sm btn-light text-danger';
+    deleteBtn.innerHTML = '<i class="bi bi-trash"></i>';
+    deleteBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const preview = document.getElementById('delete-screenshot-preview');
+        const confirmBtn = document.getElementById('delete-screenshot-confirm');
+        const modalEl = document.getElementById('delete-screenshot-modal');
+        preview.src = dataUrl;
+        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        // Replace confirm button to clear previous listeners
+        const newConfirmBtn = confirmBtn.cloneNode(true);
+        confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+        newConfirmBtn.addEventListener('click', () => {
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+            fetch(`/api/screenshots/${data.id}/delete/`, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': csrfToken },
+            })
+                .then(r => r.json())
+                .then(() => { wrapper.remove(); modal.hide(); })
+                .catch(err => console.error('Error deleting screenshot:', err));
+        });
+        modal.show();
+    });
+    actions.appendChild(deleteBtn);
+
+    wrapper.appendChild(actions);
+    gallery.appendChild(wrapper);
 }
 
 function restoreScreenshot(data) {

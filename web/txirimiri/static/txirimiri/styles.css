@@ -49,6 +49,16 @@ body {
     pointer-events: auto;
 }
 
+/* Screenshot gallery item with hover actions */
+.screenshot-item .screenshot-actions {
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+
+.screenshot-item:hover .screenshot-actions {
+    opacity: 1;
+}
+
 /* Line clamp for description truncation (no Bootstrap equivalent) */
 .line-clamp-2 {
     display: -webkit-box;

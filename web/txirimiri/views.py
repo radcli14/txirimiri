@@ -74,3 +74,13 @@ def get_screenshots(request):
             'image_base64': base64.b64encode(bytes(s.image)).decode('utf-8'),
         })
     return JsonResponse({'screenshots': result})
+
+
+@require_POST
+def delete_screenshot(request, screenshot_id):
+    try:
+        screenshot = Screenshot.objects.get(id=screenshot_id)
+    except Screenshot.DoesNotExist:
+        return JsonResponse({'error': 'Not found'}, status=404)
+    screenshot.delete()
+    return JsonResponse({'ok': True})
