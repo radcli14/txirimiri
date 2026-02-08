@@ -172,6 +172,11 @@ function displayModelDetails(id, name, description, extension, useAltModel) {
                     <select id="skybox-dropdown" class="form-select form-select-sm" style="width: auto;">
                         <option value="">Loading skyboxes...</option>
                     </select>
+                    <div class="d-flex align-items-center gap-2 mt-1">
+                        <label for="scale-slider" class="form-label mb-0 small text-nowrap">Scale</label>
+                        <input type="range" id="scale-slider" class="form-range" min="-1" max="1" step="0.01" value="0" style="width: 120px;">
+                        <span id="scale-value" class="small text-nowrap">1.0x</span>
+                    </div>
                 </div>
                 <div id="viewer-container" class="mb-4 d-none">
                     <canvas id="model-canvas" class="w-100 rounded" style="height: 500px;"></canvas>
@@ -402,7 +407,7 @@ function initializeViewer(modelUrl) {
             const maxDim = Math.max(finalSize.x, finalSize.y, finalSize.z);
             const distance = maxDim * 2;
             camera.position.set(distance * 0.7, distance * 0.5, distance * 0.7);
-            camera.far = Math.max(maxDim * 50, 1000);
+            camera.far = Math.max(maxDim * 100, 1000);
             camera.updateProjectionMatrix();
             controls.target.copy(finalCenter);
             controls.update();
@@ -417,8 +422,23 @@ function initializeViewer(modelUrl) {
             directionalLight.position.set(maxDim, maxDim * 2, maxDim);
             directionalLight.shadow.camera.updateProjectionMatrix();
 
-            // Store model dimensions for skybox radius calculation
+            // Store model reference and dimensions for scale slider and skybox
+            viewer.model = model;
+            viewer.modelOriginalCenter = center.clone();
+            viewer.modelOriginalBoxMin = box.min.clone();
             viewer.modelMaxDim = maxDim;
+
+            // Wire up the scale slider
+            const slider = document.getElementById('scale-slider');
+            const scaleLabel = document.getElementById('scale-value');
+            if (slider) {
+                slider.value = 0;
+                slider.addEventListener('input', () => {
+                    const scale = Math.pow(10, parseFloat(slider.value));
+                    scaleLabel.textContent = scale.toFixed(1) + 'x';
+                    updateModelScale(scale);
+                });
+            }
 
             console.log('GLB model loaded, max dimension:', maxDim);
         }, undefined, (error) => {
@@ -434,6 +454,28 @@ function initializeViewer(modelUrl) {
             }
         });
     });
+}
+
+function updateModelScale(scale) {
+    if (!viewer || !viewer.model) return;
+
+    const model = viewer.model;
+    const oldScale = model.scale.x; // Assuming uniform scaling
+    const ratio = scale / oldScale;
+    model.scale.setScalar(scale);
+
+    // Reposition so bottom stays at y=0
+    const box = new THREE.Box3().setFromObject(model);
+    model.position.y -= box.min.y;
+
+    // Adjust camera distance to maintain framing based on new model size
+    const newMaxDim = viewer.modelMaxDim * scale;
+    const oldPosition = viewer.camera.position.clone();
+    const oldTarget = viewer.controls.target.clone();
+    viewer.camera.position.set(oldPosition.x * ratio, oldPosition.y * ratio, oldPosition.z * ratio);
+    viewer.controls.target.set(oldTarget.x * ratio, oldTarget.y * ratio, oldTarget.z * ratio);
+    viewer.camera.far = Math.max(newMaxDim * 100, 1000);
+    viewer.camera.updateProjectionMatrix();
 }
 
 function fetchSkyboxes() {
@@ -576,7 +618,7 @@ function applySkybox(id, name, extension, height, exposure, shadowIntensity, sha
                 // Ground-projected skybox, radius scales with model size
                 const skyboxHeight = parseFloat(height);
                 const modelDim = viewer.modelMaxDim || 2;
-                const skyboxRadius = Math.max(modelDim * 10, 100);
+                const skyboxRadius = Math.max(modelDim * 50, 100);
                 const groundedSkybox = new GroundedSkybox(texture, skyboxHeight, skyboxRadius);
                 groundedSkybox.position.y = skyboxHeight - 0.01;
                 viewer.scene.add(groundedSkybox);
