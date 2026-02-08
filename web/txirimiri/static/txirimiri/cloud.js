@@ -364,6 +364,7 @@ function initializeViewer(modelUrl) {
             directionalLight,
             shadowPlane,
             groundedSkybox: null,
+            skyboxTexture: null,
             animationId: null,
             resizeHandler: null,
             dispose() {
@@ -638,13 +639,33 @@ function applySkybox(id, name, extension, height, exposure, shadowIntensity, sha
         const skyboxUrl = imageUrl + '#.' + extension;
 
         loader.load(skyboxUrl, (texture) => {
+            // Downscale large JPG textures for iOS Safari compatibility
+            if (!isHDR && texture.image && texture.image.width > 4096) {
+                const maxSize = 4096;
+                const aspect = texture.image.width / texture.image.height;
+                const canvas = document.createElement('canvas');
+                canvas.width = maxSize;
+                canvas.height = Math.round(maxSize / aspect);
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(texture.image, 0, 0, canvas.width, canvas.height);
+                texture.image = canvas;
+                texture.needsUpdate = true;
+                console.log('Downscaled texture to', canvas.width, 'x', canvas.height);
+            }
+
             texture.mapping = THREE.EquirectangularReflectionMapping;
 
-            // Remove previous skybox if any
+            // Dispose previous texture and skybox to free GPU memory
+            if (viewer.skyboxTexture) {
+                viewer.skyboxTexture.dispose();
+            }
             if (viewer.groundedSkybox) {
+                viewer.groundedSkybox.material.dispose();
+                viewer.groundedSkybox.geometry.dispose();
                 viewer.scene.remove(viewer.groundedSkybox);
                 viewer.groundedSkybox = null;
             }
+            viewer.skyboxTexture = texture;
 
             // Set environment for PBR lighting
             viewer.scene.environment = texture;
@@ -698,8 +719,14 @@ function removeSkybox() {
 
     console.log('Removing skybox');
 
-    // Remove grounded skybox mesh
+    // Dispose texture and grounded skybox mesh to free GPU memory
+    if (viewer.skyboxTexture) {
+        viewer.skyboxTexture.dispose();
+        viewer.skyboxTexture = null;
+    }
     if (viewer.groundedSkybox) {
+        viewer.groundedSkybox.material.dispose();
+        viewer.groundedSkybox.geometry.dispose();
         viewer.scene.remove(viewer.groundedSkybox);
         viewer.groundedSkybox = null;
     }
