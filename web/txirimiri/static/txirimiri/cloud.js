@@ -386,19 +386,12 @@ function initializeViewer(modelUrl) {
                 }
             });
 
-            // Auto-center and scale the model
+            // Center horizontally and place bottom at y=0 (keep original scale)
             const box = new THREE.Box3().setFromObject(model);
             const center = box.getCenter(new THREE.Vector3());
-            const size = box.getSize(new THREE.Vector3());
-            const maxDim = Math.max(size.x, size.y, size.z);
-            const scale = 2 / maxDim;
-            model.scale.setScalar(scale);
-
-            // Position model so its bottom sits at y=0
-            const scaledBox = new THREE.Box3().setFromObject(model);
-            model.position.x = -center.x * scale;
-            model.position.z = -center.z * scale;
-            model.position.y = -scaledBox.min.y;
+            model.position.x = -center.x;
+            model.position.z = -center.z;
+            model.position.y = -box.min.y;
 
             scene.add(model);
 
@@ -406,12 +399,28 @@ function initializeViewer(modelUrl) {
             const finalBox = new THREE.Box3().setFromObject(model);
             const finalSize = finalBox.getSize(new THREE.Vector3());
             const finalCenter = finalBox.getCenter(new THREE.Vector3());
-            const distance = Math.max(finalSize.x, finalSize.y, finalSize.z) * 2;
+            const maxDim = Math.max(finalSize.x, finalSize.y, finalSize.z);
+            const distance = maxDim * 2;
             camera.position.set(distance * 0.7, distance * 0.5, distance * 0.7);
+            camera.far = Math.max(maxDim * 50, 1000);
+            camera.updateProjectionMatrix();
             controls.target.copy(finalCenter);
             controls.update();
 
-            console.log('GLB model loaded successfully');
+            // Adapt shadow camera bounds to model size
+            const shadowExtent = maxDim * 2;
+            directionalLight.shadow.camera.left = -shadowExtent;
+            directionalLight.shadow.camera.right = shadowExtent;
+            directionalLight.shadow.camera.top = shadowExtent;
+            directionalLight.shadow.camera.bottom = -shadowExtent;
+            directionalLight.shadow.camera.far = maxDim * 10;
+            directionalLight.position.set(maxDim, maxDim * 2, maxDim);
+            directionalLight.shadow.camera.updateProjectionMatrix();
+
+            // Store model dimensions for skybox radius calculation
+            viewer.modelMaxDim = maxDim;
+
+            console.log('GLB model loaded, max dimension:', maxDim);
         }, undefined, (error) => {
             console.error('Error loading GLB model:', error);
             const statusElement = document.getElementById('model-status');
@@ -564,9 +573,10 @@ function applySkybox(id, name, extension, height, exposure, shadowIntensity, sha
             }
 
             if (height) {
-                // Ground-projected skybox
+                // Ground-projected skybox, radius scales with model size
                 const skyboxHeight = parseFloat(height);
-                const skyboxRadius = 100;
+                const modelDim = viewer.modelMaxDim || 2;
+                const skyboxRadius = Math.max(modelDim * 10, 100);
                 const groundedSkybox = new GroundedSkybox(texture, skyboxHeight, skyboxRadius);
                 groundedSkybox.position.y = skyboxHeight - 0.01;
                 viewer.scene.add(groundedSkybox);
