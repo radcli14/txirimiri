@@ -1,4 +1,4 @@
-import { queryModelRecords, fetchThumbnailUrl, fetchModelUrl, querySkyboxRecords, fetchSkyboxImageUrl } from './cloud.js';
+import * as cloud from './cloud.js';
 import * as viewer from './three_viewer.js';
 import * as ui from './bootstrap_ui.js';
 
@@ -22,7 +22,7 @@ ui.init(state, {
 document.addEventListener('DOMContentLoaded', () => {
     const modelList = document.getElementById('model-list');
 
-    queryModelRecords().then(records => {
+    cloud.init().then(() => cloud.queryModelRecords()).then(records => {
         records.forEach(record => {
             const id = record.recordName;
             const name = record.fields.name.value;
@@ -81,7 +81,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // --- Orchestration functions ---
 
 function fetchThumbnail(id, itemElement) {
-    fetchThumbnailUrl(id).then(thumbnailUrl => {
+    cloud.fetchThumbnailUrl(id).then(thumbnailUrl => {
         if (thumbnailUrl) {
             const imgElement = itemElement.querySelector(`#thumbnail-${id}`);
             const iconPlaceholder = itemElement.querySelector('.model-icon-placeholder');
@@ -121,7 +121,7 @@ function displayModelDetails(id, name, description, extension, useAltModel) {
 }
 
 function fetchModel(id, useAltModel) {
-    fetchModelUrl(id, useAltModel).then(modelUrl => {
+    cloud.fetchModelUrl(id, useAltModel).then(modelUrl => {
         const statusElement = document.getElementById('model-status');
 
         if (modelUrl) {
@@ -161,7 +161,7 @@ function fetchSkyboxes() {
         return;
     }
 
-    querySkyboxRecords().then(records => {
+    cloud.querySkyboxRecords().then(records => {
         // Clear the dropdown and add default option
         dropdown.innerHTML = '<option value="">Select a skybox</option>';
 
@@ -239,7 +239,7 @@ function applySkybox(skybox) {
 
     console.log('Loading skybox:', skybox.name);
 
-    fetchSkyboxImageUrl(skybox.id).then(imageUrl => {
+    cloud.fetchSkyboxImageUrl(skybox.id).then(imageUrl => {
         if (!imageUrl) {
             console.error('No image URL found for skybox');
             return;

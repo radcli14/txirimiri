@@ -1,19 +1,29 @@
-// Configure CloudKit
-CloudKit.configure({
-    containers: [{
-        containerIdentifier: 'iCloud.com.dcengineer.txirimiri',
-        apiTokenAuth: {
-            apiToken: apiToken,
-            persist: true
-        },
-        environment: 'development'
-    }]
-});
+let database = null;
 
-const container = CloudKit.getDefaultContainer();
-const database = container.publicCloudDatabase;
+export function init() {
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    return fetch('/api/cloudkit-token/', {
+        method: 'POST',
+        headers: { 'X-CSRFToken': csrfToken },
+    })
+        .then(r => r.json())
+        .then(data => {
+            CloudKit.configure({
+                containers: [{
+                    containerIdentifier: 'iCloud.com.dcengineer.txirimiri',
+                    apiTokenAuth: {
+                        apiToken: data.api_token,
+                        persist: true
+                    },
+                    environment: 'development'
+                }]
+            });
 
-console.log('CloudKit configured and initialized');
+            const container = CloudKit.getDefaultContainer();
+            database = container.publicCloudDatabase;
+            console.log('CloudKit configured and initialized');
+        });
+}
 
 export function queryModelRecords() {
     const query = { recordType: 'Model3D' };
