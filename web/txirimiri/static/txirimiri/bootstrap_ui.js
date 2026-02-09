@@ -23,57 +23,38 @@ export function generateModelItemHTML(name, description, id) {
     `;
 }
 
-export function buildModelDetailsPage(description, extension) {
-    return `
-        <div class="container py-4">
-            <div class="position-relative">
-                <div id="view-options-panel" class="view-options-panel p-2 rounded bg-body-tertiary">
-                    <div class="mb-2">
-                        <label for="skybox-dropdown" class="form-label mb-1 small fw-semibold">Skybox</label>
-                        <select id="skybox-dropdown" class="form-select form-select-sm">
-                            <option value="">Loading skyboxes...</option>
-                        </select>
-                    </div>
-                    <div class="mb-2">
-                        <label for="exposure-slider" class="form-label mb-1 small fw-semibold">Exposure <span id="exposure-value" class="fw-normal text-muted">1.0</span></label>
-                        <input type="range" id="exposure-slider" class="form-range" min="-1" max="1" step="0.01" value="0">
-                    </div>
-                    <div class="mb-2">
-                        <label for="light-slider" class="form-label mb-1 small fw-semibold">Light <span id="light-value" class="fw-normal text-muted">1.0</span></label>
-                        <input type="range" id="light-slider" class="form-range" min="-1" max="1" step="0.01" value="0">
-                    </div>
-                    <div class="mb-2">
-                        <label for="scale-slider" class="form-label mb-1 small fw-semibold">Scale <span id="scale-value" class="fw-normal text-muted">1.0x</span></label>
-                        <input type="range" id="scale-slider" class="form-range" min="-1" max="1" step="0.01" value="0">
-                    </div>
-                    <div class="mb-0">
-                        <label for="yaw-slider" class="form-label mb-1 small fw-semibold">Yaw <span id="yaw-value" class="fw-normal text-muted">0.0°</span></label>
-                        <input type="range" id="yaw-slider" class="form-range" min="${-Math.PI}" max="${Math.PI}" step="0.01" value="0">
-                    </div>
-                </div>
-                <div id="viewer-container" class="mb-4 d-none">
-                    <canvas id="model-canvas" class="w-100 rounded" style="height: 500px;"></canvas>
-                </div>
-                <div id="model-status" class="mb-4 d-flex align-items-center justify-content-center bg-light rounded" style="height: 500px;">
-                    <div class="text-center">
-                        <div class="spinner-border text-primary mb-3" role="status">
-                            <span class="visually-hidden">Loading...</span>
-                        </div>
-                        <p class="text-muted">Downloading model...</p>
-                    </div>
-                </div>
-            </div>
-            <button id="screenshot-btn" class="btn btn-outline-primary mb-4 d-none">
-                <i class="bi bi-camera"></i> Generate Screenshot
-            </button>
-            <p class="lead">${description}</p>
-            <p class="text-muted mb-3">Format: ${extension.toUpperCase()}</p>
-            <div class="mb-4">
-                <h5>Screenshots</h5>
-                <div id="screenshot-gallery" class="d-flex flex-wrap gap-2"></div>
-            </div>
-        </div>
-    `;
+export function showModelDetailsPage(description, extension) {
+    // Hide placeholder, show detail view
+    document.getElementById('model-placeholder').classList.add('d-none');
+    document.getElementById('model-details').classList.remove('d-none');
+
+    // Set dynamic text content
+    document.getElementById('model-description').textContent = description;
+    document.getElementById('model-format').textContent = extension.toUpperCase();
+
+    // Reset viewer/status to loading state
+    document.getElementById('viewer-container').classList.add('d-none');
+    document.getElementById('model-status').classList.remove('d-none');
+    document.getElementById('model-status-loading').classList.remove('d-none');
+    document.getElementById('model-status-warning').classList.add('d-none');
+    document.getElementById('model-status-error').classList.add('d-none');
+
+    // Reset sliders to defaults
+    document.getElementById('exposure-slider').value = 0;
+    document.getElementById('exposure-value').textContent = '1.0';
+    document.getElementById('light-slider').value = 0;
+    document.getElementById('light-value').textContent = '1.0';
+    document.getElementById('scale-slider').value = 0;
+    document.getElementById('scale-value').textContent = '1.0x';
+    document.getElementById('yaw-slider').value = 0;
+    document.getElementById('yaw-value').textContent = '0.0\u00B0';
+
+    // Reset screenshot button and gallery
+    document.getElementById('screenshot-btn').classList.add('d-none');
+    document.getElementById('screenshot-gallery').innerHTML = '';
+
+    // Reset skybox dropdown
+    document.getElementById('skybox-dropdown').innerHTML = '<option value="">Loading skyboxes...</option>';
 }
 
 export function wireUpViewOptionsPanel() {

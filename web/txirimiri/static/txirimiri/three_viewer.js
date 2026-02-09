@@ -212,15 +212,9 @@ export function initializeViewer(modelUrl, onModelLoaded) {
             console.log('GLB model loaded, max dimension:', maxDim);
         }, undefined, (error) => {
             console.error('Error loading GLB model:', error);
-            const statusElement = document.getElementById('model-status');
-            if (statusElement) {
-                statusElement.classList.remove('d-none');
-                statusElement.innerHTML = `
-                    <div class="alert alert-danger">
-                        <i class="bi bi-exclamation-triangle"></i> Error loading 3D model
-                    </div>
-                `;
-            }
+            document.getElementById('model-status').classList.remove('d-none');
+            document.getElementById('model-status-loading').classList.add('d-none');
+            document.getElementById('model-status-error').classList.remove('d-none');
         });
     });
 }

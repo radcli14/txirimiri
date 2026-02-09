@@ -52,9 +52,67 @@
 
 <!-- Main Content Area -->
 <div id="main-content" class="position-fixed top-0 start-0 w-100 vh-100 bg-light text-center overflow-auto" style="z-index: 1; padding-top: 56px;">
-    <div class="d-flex flex-column align-items-center justify-content-center h-100">
+    <!-- Placeholder shown before a model is selected -->
+    <div id="model-placeholder" class="d-flex flex-column align-items-center justify-content-center h-100">
         <i class="bi bi-grid-3x3-gap display-1 text-secondary"></i>
         <p class="text-muted mt-3">Select a model from the sidebar to view details</p>
+    </div>
+    <!-- Model details, hidden until a model is selected -->
+    <div id="model-details" class="d-none">
+        <div class="container py-4">
+            <div class="position-relative">
+                <div id="view-options-panel" class="view-options-panel p-2 rounded bg-body-tertiary">
+                    <div class="mb-2">
+                        <label for="skybox-dropdown" class="form-label mb-1 small fw-semibold">Skybox</label>
+                        <select id="skybox-dropdown" class="form-select form-select-sm">
+                            <option value="">Loading skyboxes...</option>
+                        </select>
+                    </div>
+                    <div class="mb-2">
+                        <label for="exposure-slider" class="form-label mb-1 small fw-semibold">Exposure <span id="exposure-value" class="fw-normal text-muted">1.0</span></label>
+                        <input type="range" id="exposure-slider" class="form-range" min="-1" max="1" step="0.01" value="0">
+                    </div>
+                    <div class="mb-2">
+                        <label for="light-slider" class="form-label mb-1 small fw-semibold">Light <span id="light-value" class="fw-normal text-muted">1.0</span></label>
+                        <input type="range" id="light-slider" class="form-range" min="-1" max="1" step="0.01" value="0">
+                    </div>
+                    <div class="mb-2">
+                        <label for="scale-slider" class="form-label mb-1 small fw-semibold">Scale <span id="scale-value" class="fw-normal text-muted">1.0x</span></label>
+                        <input type="range" id="scale-slider" class="form-range" min="-1" max="1" step="0.01" value="0">
+                    </div>
+                    <div class="mb-0">
+                        <label for="yaw-slider" class="form-label mb-1 small fw-semibold">Yaw <span id="yaw-value" class="fw-normal text-muted">0.0&deg;</span></label>
+                        <input type="range" id="yaw-slider" class="form-range" min="-3.141592653589793" max="3.141592653589793" step="0.01" value="0">
+                    </div>
+                </div>
+                <div id="viewer-container" class="mb-4 d-none">
+                    <canvas id="model-canvas" class="w-100 rounded" style="height: 500px;"></canvas>
+                </div>
+                <div id="model-status" class="mb-4 d-flex align-items-center justify-content-center bg-light rounded" style="height: 500px;">
+                    <div id="model-status-loading" class="text-center">
+                        <div class="spinner-border text-primary mb-3" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="text-muted">Downloading model...</p>
+                    </div>
+                    <div id="model-status-warning" class="alert alert-warning d-none">
+                        <i class="bi bi-info-circle"></i> No model file available
+                    </div>
+                    <div id="model-status-error" class="alert alert-danger d-none">
+                        <i class="bi bi-exclamation-triangle"></i> Error loading 3D model
+                    </div>
+                </div>
+            </div>
+            <button id="screenshot-btn" class="btn btn-outline-primary mb-4 d-none">
+                <i class="bi bi-camera"></i> Generate Screenshot
+            </button>
+            <p id="model-description" class="lead"></p>
+            <p class="text-muted mb-3">Format: <span id="model-format"></span></p>
+            <div class="mb-4">
+                <h5>Screenshots</h5>
+                <div id="screenshot-gallery" class="d-flex flex-wrap gap-2"></div>
+            </div>
+        </div>
     </div>
 </div>
 

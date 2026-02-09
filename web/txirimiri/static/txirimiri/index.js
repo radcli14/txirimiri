@@ -109,9 +109,8 @@ function displayModelDetails(id, name, description, extension, useAltModel) {
     viewer.saveCameraDirection();
     viewer.disposeViewer();
 
-    // Build the detail page HTML and wire up the view options panel
-    const mainContent = document.getElementById('main-content');
-    mainContent.innerHTML = ui.buildModelDetailsPage(description, extension);
+    // Show the detail page and wire up the view options panel
+    ui.showModelDetailsPage(description, extension);
     ui.wireUpViewOptionsPanel();
 
     // Asynchronously fetch the model file, skyboxes, and screenshots
@@ -122,35 +121,22 @@ function displayModelDetails(id, name, description, extension, useAltModel) {
 
 function fetchModel(id, useAltModel) {
     cloud.fetchModelUrl(id, useAltModel).then(modelUrl => {
-        const statusElement = document.getElementById('model-status');
-
         if (modelUrl) {
             console.log('Model URL:', modelUrl);
-            if (statusElement) statusElement.classList.add('d-none');
+            document.getElementById('model-status').classList.add('d-none');
 
             viewer.initializeViewer(modelUrl, () => {
                 ui.wireUpSliders();
                 ui.wireUpScreenshotButton();
             });
         } else {
-            if (statusElement) {
-                statusElement.innerHTML = `
-                    <div class="alert alert-warning">
-                        <i class="bi bi-info-circle"></i> No model file available
-                    </div>
-                `;
-            }
+            document.getElementById('model-status-loading').classList.add('d-none');
+            document.getElementById('model-status-warning').classList.remove('d-none');
         }
     }).catch(error => {
         console.error('Error fetching model for', id, error);
-        const statusElement = document.getElementById('model-status');
-        if (statusElement) {
-            statusElement.innerHTML = `
-                <div class="alert alert-danger">
-                    <i class="bi bi-exclamation-triangle"></i> Error loading model
-                </div>
-            `;
-        }
+        document.getElementById('model-status-loading').classList.add('d-none');
+        document.getElementById('model-status-error').classList.remove('d-none');
     });
 }
 
