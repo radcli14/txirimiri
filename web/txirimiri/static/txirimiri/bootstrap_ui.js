@@ -2,12 +2,14 @@ let state = null;
 let updateModelScale = null;
 let updateModelYaw = null;
 
+// Initializes the app state inside this script, with callbacks to handle scale or yaw slider interactions.
 export function init(s, callbacks) {
     state = s;
     updateModelScale = callbacks.updateModelScale;
     updateModelYaw = callbacks.updateModelYaw;
 }
 
+// This generates the list items to be used inside of the left sidebar.
 export function generateModelItemHTML(name, description, id) {
     return `
         <div class="d-flex align-items-start gap-3 text-start">
@@ -23,6 +25,7 @@ export function generateModelItemHTML(name, description, id) {
     `;
 }
 
+// Toggles visibility of the model details when a model is clicked in the list.
 export function showModelDetailsPage(description, extension) {
     // Hide placeholder, show detail view
     document.getElementById('model-placeholder').classList.add('d-none');
@@ -57,6 +60,7 @@ export function showModelDetailsPage(description, extension) {
     document.getElementById('skybox-dropdown').innerHTML = '<option value="">Loading skyboxes...</option>';
 }
 
+// Creates actions associated with showing and removing the panel using the upper right button.
 export function wireUpViewOptionsPanel() {
     const viewOptionsBtn = document.getElementById('view-options-btn');
     const viewOptionsPanel = document.getElementById('view-options-panel');
@@ -73,6 +77,7 @@ export function wireUpViewOptionsPanel() {
     }
 }
 
+// Adds callbacks for user interactions with the sliders in the upper right panel.
 export function wireUpSliders() {
     const viewer = state.viewer;
 
@@ -124,6 +129,7 @@ export function wireUpSliders() {
     }
 }
 
+// Adds callbacks to the user tapping the screenshot button in the model details view.
 export function wireUpScreenshotButton() {
     const screenshotBtn = document.getElementById('screenshot-btn');
     if (screenshotBtn) {
@@ -132,6 +138,8 @@ export function wireUpScreenshotButton() {
     }
 }
 
+// Generates a screenshot, using the viewer to render the image, then adds all of the
+// associated data to be stored in the persisted database.
 export function generateScreenshot() {
     const viewer = state.viewer;
     if (!viewer || !viewer.model) return;
@@ -183,15 +191,16 @@ export function generateScreenshot() {
         headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
         body: JSON.stringify(payload),
     })
-        .then(r => r.json())
-        .then(data => {
-            addScreenshotToGallery({ ...payload, id: data.id, image_base64: base64 });
-        })
-        .catch(error => {
-            console.error('Error saving screenshot:', error);
-        });
+    .then(r => r.json())
+    .then(data => {
+        addScreenshotToGallery({ ...payload, id: data.id, image_base64: base64 });
+    })
+    .catch(error => {
+        console.error('Error saving screenshot:', error);
+    });
 }
 
+// Converts data into a binary large object (BLOB) for persistence in the database.
 function dataUrlToBlob(dataUrl) {
     const parts = dataUrl.split(',');
     const mime = parts[0].match(/:(.*?);/)[1];
@@ -203,6 +212,7 @@ function dataUrlToBlob(dataUrl) {
     return new Blob([array], { type: mime });
 }
 
+// Fetches the list of screenshots from the API endpoint, and adds them each to the gallery.
 export function loadScreenshots(recordName) {
     fetch(`/api/screenshots/?model3d_record_name=${encodeURIComponent(recordName)}`)
         .then(r => r.json())
@@ -219,6 +229,8 @@ export function loadScreenshots(recordName) {
         });
 }
 
+// Adds a screenshot image to the gallery on the bottom of the page with the 
+// associated screenshot data.
 export function addScreenshotToGallery(data) {
     const gallery = document.getElementById('screenshot-gallery');
     if (!gallery) return;
@@ -283,6 +295,8 @@ export function addScreenshotToGallery(data) {
     gallery.appendChild(wrapper);
 }
 
+// When the user taps a screenshot on the bottom of the details view, this will restore
+// the skybox and model/camera pose from that screenshot.
 function restoreScreenshot(data) {
     const viewer = state.viewer;
     if (!viewer || !viewer.model) return;
