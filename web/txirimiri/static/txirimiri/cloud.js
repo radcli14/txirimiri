@@ -1,8 +1,27 @@
-import * as THREE from 'three';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { HDRLoader } from 'three/addons/loaders/HDRLoader.js';
-import { GroundedSkybox } from 'three/addons/objects/GroundedSkybox.js';
+import {
+    generateModelItemHTML,
+    buildModelDetailsPage,
+    wireUpViewOptionsPanel,
+    wireUpSliders,
+    wireUpScreenshotButton,
+    loadScreenshots,
+} from './bootstrap_ui.js';
+
+import {
+    THREE,
+    HDRLoader,
+    initializeViewer,
+    applySkyboxTexture,
+    removeSkybox,
+} from './three_viewer.js';
+
+// Shared state accessible by all modules
+export const state = {
+    viewer: null,
+    currentSkybox: null,
+    savedCameraDir: null,
+    model3dRecordName: null,
+};
 
 // Configure CloudKit
 CloudKit.configure({
@@ -20,18 +39,6 @@ const container = CloudKit.getDefaultContainer();
 const database = container.publicCloudDatabase;
 
 console.log('CloudKit configured and initialized');
-
-// Module-level Three.js state (shared between viewer and skybox functions)
-let viewer = null;
-
-// Persisted skybox selection (survives model switches)
-let currentSkybox = null;
-
-// Saved camera direction for preserving orientation across model switches
-let savedCameraDir = null;
-
-// Current model's CloudKit record name (for screenshot API)
-let model3dRecordName = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     const modelList = document.getElementById('model-list');
@@ -69,7 +76,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const item = document.createElement('a');
             item.className = 'list-group-item list-group-item-action text-bg-secondary';
-            item.innerHTML = generateHTML(name, description, id);
+            item.innerHTML = generateModelItemHTML(name, description, id);
             item.dataset.extension = displayExtension;
             item.dataset.useAltModel = useAltModel;
             modelList.appendChild(item);
@@ -106,21 +113,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-function generateHTML(name, description, id) {
-    return `
-        <div class="d-flex align-items-start gap-3 text-start">
-            <div class="model-thumbnail-container flex-shrink-0 d-flex align-items-center justify-content-center bg-light rounded overflow-hidden">
-                <i class="bi bi-box model-icon-placeholder fs-1 text-secondary"></i>
-                <img class="model-thumbnail" id="thumbnail-${id}" alt="${name} thumbnail" style="display: none;">
-            </div>
-            <div class="flex-grow-1">
-                <h5 class="mb-2">${name}</h5>
-                <p class="mb-0 line-clamp-2">${description}</p>
-            </div>
-        </div>
-    `;
-}
-
 function fetchThumbnail(id, itemElement) {
     const options = {
         desiredKeys: ['thumbnail']
@@ -155,8 +147,7 @@ function fetchThumbnail(id, itemElement) {
 }
 
 function displayModelDetails(id, name, description, extension, useAltModel) {
-    // Track current model record name for screenshot API
-    model3dRecordName = id;
+    state.model3dRecordName = id;
 
     // Update navbar title
     const navbarTitle = document.getElementById('navbar-title');
@@ -165,87 +156,22 @@ function displayModelDetails(id, name, description, extension, useAltModel) {
     }
 
     // Save camera direction before disposing (for orientation persistence with skybox)
-    if (viewer && currentSkybox && viewer.controls) {
-        const dir = new THREE.Vector3().subVectors(viewer.camera.position, viewer.controls.target).normalize();
-        savedCameraDir = dir;
+    if (state.viewer && state.currentSkybox && state.viewer.controls) {
+        const dir = new THREE.Vector3().subVectors(state.viewer.camera.position, state.viewer.controls.target).normalize();
+        state.savedCameraDir = dir;
     } else {
-        savedCameraDir = null;
+        state.savedCameraDir = null;
     }
 
     // Clean up previous viewer
-    if (viewer) {
-        viewer.dispose();
-        viewer = null;
+    if (state.viewer) {
+        state.viewer.dispose();
+        state.viewer = null;
     }
 
     const mainContent = document.getElementById('main-content');
-
-    // Update main content with model details
-    mainContent.innerHTML = `
-        <div class="container py-4">
-            <div class="position-relative">
-                <div id="view-options-panel" class="view-options-panel p-2 rounded bg-body-tertiary">
-                    <div class="mb-2">
-                        <label for="skybox-dropdown" class="form-label mb-1 small fw-semibold">Skybox</label>
-                        <select id="skybox-dropdown" class="form-select form-select-sm">
-                            <option value="">Loading skyboxes...</option>
-                        </select>
-                    </div>
-                    <div class="mb-2">
-                        <label for="exposure-slider" class="form-label mb-1 small fw-semibold">Exposure <span id="exposure-value" class="fw-normal text-muted">1.0</span></label>
-                        <input type="range" id="exposure-slider" class="form-range" min="-1" max="1" step="0.01" value="0">
-                    </div>
-                    <div class="mb-2">
-                        <label for="light-slider" class="form-label mb-1 small fw-semibold">Light <span id="light-value" class="fw-normal text-muted">1.0</span></label>
-                        <input type="range" id="light-slider" class="form-range" min="-1" max="1" step="0.01" value="0">
-                    </div>
-                    <div class="mb-2">
-                        <label for="scale-slider" class="form-label mb-1 small fw-semibold">Scale <span id="scale-value" class="fw-normal text-muted">1.0x</span></label>
-                        <input type="range" id="scale-slider" class="form-range" min="-1" max="1" step="0.01" value="0">
-                    </div>
-                    <div class="mb-0">
-                        <label for="yaw-slider" class="form-label mb-1 small fw-semibold">Yaw <span id="yaw-value" class="fw-normal text-muted">0.0°</span></label>
-                        <input type="range" id="yaw-slider" class="form-range" min="${-Math.PI}" max="${Math.PI}" step="0.01" value="0">
-                    </div>
-                </div>
-                <div id="viewer-container" class="mb-4 d-none">
-                    <canvas id="model-canvas" class="w-100 rounded" style="height: 500px;"></canvas>
-                </div>
-                <div id="model-status" class="mb-4 d-flex align-items-center justify-content-center bg-light rounded" style="height: 500px;">
-                    <div class="text-center">
-                        <div class="spinner-border text-primary mb-3" role="status">
-                            <span class="visually-hidden">Loading...</span>
-                        </div>
-                        <p class="text-muted">Downloading model...</p>
-                    </div>
-                </div>
-            </div>
-            <button id="screenshot-btn" class="btn btn-outline-primary mb-4 d-none">
-                <i class="bi bi-camera"></i> Generate Screenshot
-            </button>
-            <p class="lead">${description}</p>
-            <p class="text-muted mb-3">Format: ${extension.toUpperCase()}</p>
-            <div class="mb-4">
-                <h5>Screenshots</h5>
-                <div id="screenshot-gallery" class="d-flex flex-wrap gap-2"></div>
-            </div>
-        </div>
-    `;
-
-    // Show the view options button in the navbar and wire up toggle
-    const viewOptionsBtn = document.getElementById('view-options-btn');
-    const viewOptionsPanel = document.getElementById('view-options-panel');
-    if (viewOptionsBtn) {
-        viewOptionsBtn.classList.remove('d-none');
-        viewOptionsBtn.onclick = (e) => {
-            e.stopPropagation();
-            viewOptionsPanel.classList.toggle('visible');
-        };
-        viewOptionsPanel.addEventListener('click', (e) => e.stopPropagation());
-        document.addEventListener('click', () => {
-            viewOptionsPanel.classList.remove('visible');
-        });
-    }
+    mainContent.innerHTML = buildModelDetailsPage(id, name, description, extension);
+    wireUpViewOptionsPanel();
 
     // Asynchronously fetch the model file and skyboxes
     fetchModel(id, extension, useAltModel);
@@ -285,7 +211,15 @@ function fetchModel(id, extension, useAltModel) {
             if (statusElement) {
                 statusElement.classList.add('d-none');
             }
-            initializeViewer(modelUrl);
+            initializeViewer(modelUrl, () => {
+                wireUpSliders();
+                wireUpScreenshotButton();
+                if (state.currentSkybox) {
+                    applySkybox(state.currentSkybox.id, state.currentSkybox.name, state.currentSkybox.extension,
+                        state.currentSkybox.height, state.currentSkybox.exposure,
+                        state.currentSkybox.shadowIntensity, state.currentSkybox.shadowSoftness);
+                }
+            });
         } else {
             if (statusElement) {
                 statusElement.innerHTML = `
@@ -306,286 +240,6 @@ function fetchModel(id, extension, useAltModel) {
             `;
         }
     });
-}
-
-function initializeViewer(modelUrl) {
-    const viewerContainer = document.getElementById('viewer-container');
-    const canvas = document.getElementById('model-canvas');
-
-    if (!canvas) {
-        console.error('Canvas element not found');
-        return;
-    }
-
-    console.log('Initializing Three.js viewer with URL:', modelUrl);
-
-    // Show the viewer container
-    viewerContainer.classList.remove('d-none');
-
-    // Wait for next frame to ensure canvas is visible and has dimensions
-    requestAnimationFrame(() => {
-        const width = canvas.clientWidth || 800;
-        const height = canvas.clientHeight || 500;
-
-        // Create scene
-        const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0xf8f9fa);
-
-        // Create camera
-        const camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 1000);
-        camera.position.set(0, 1, 3);
-
-        // Create renderer
-        const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-        renderer.setSize(width, height);
-        renderer.setPixelRatio(window.devicePixelRatio);
-        renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        renderer.toneMappingExposure = 1.0;
-        renderer.shadowMap.enabled = true;
-        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-
-        // Add ambient light
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
-        scene.add(ambientLight);
-
-        // Add directional light with shadows
-        const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
-        directionalLight.position.set(5, 10, 5);
-        directionalLight.castShadow = true;
-        directionalLight.shadow.mapSize.width = 2048;
-        directionalLight.shadow.mapSize.height = 2048;
-        directionalLight.shadow.camera.near = 0.5;
-        directionalLight.shadow.camera.far = 50;
-        directionalLight.shadow.camera.left = -10;
-        directionalLight.shadow.camera.right = 10;
-        directionalLight.shadow.camera.top = 10;
-        directionalLight.shadow.camera.bottom = -10;
-        directionalLight.shadow.bias = -0.0001;
-        scene.add(directionalLight);
-
-        // Add shadow-receiving ground plane
-        const shadowPlane = new THREE.Mesh(
-            new THREE.PlaneGeometry(200, 200),
-            new THREE.ShadowMaterial({ opacity: 0.3 })
-        );
-        shadowPlane.rotation.x = -Math.PI / 2;
-        shadowPlane.position.y = 0.01;
-        shadowPlane.receiveShadow = true;
-        scene.add(shadowPlane);
-
-        // Add orbit controls
-        const controls = new OrbitControls(camera, canvas);
-        controls.enableDamping = true;
-        controls.dampingFactor = 0.05;
-        controls.target.set(0, 0.5, 0);
-        controls.update();
-
-        // Store viewer state for skybox functions
-        viewer = {
-            scene,
-            camera,
-            renderer,
-            controls,
-            directionalLight,
-            shadowPlane,
-            groundedSkybox: null,
-            skyboxTexture: null,
-            animationId: null,
-            resizeHandler: null,
-            dispose() {
-                if (this.animationId) {
-                    cancelAnimationFrame(this.animationId);
-                }
-                if (this.resizeHandler) {
-                    window.removeEventListener('resize', this.resizeHandler);
-                }
-                this.renderer.dispose();
-                this.controls.dispose();
-            }
-        };
-
-        // Animation loop
-        function animate() {
-            viewer.animationId = requestAnimationFrame(animate);
-            controls.update();
-            renderer.render(scene, camera);
-        }
-        animate();
-
-        // Handle window resize
-        viewer.resizeHandler = () => {
-            const w = canvas.clientWidth;
-            const h = canvas.clientHeight;
-            if (w && h) {
-                camera.aspect = w / h;
-                camera.updateProjectionMatrix();
-                renderer.setSize(w, h);
-            }
-        };
-        window.addEventListener('resize', viewer.resizeHandler);
-
-        // Apply persisted skybox immediately (before model loads)
-        if (currentSkybox && currentSkybox.texture) {
-            applySkyboxTexture(currentSkybox.texture, currentSkybox.height,
-                currentSkybox.exposure, currentSkybox.shadowIntensity, currentSkybox.shadowSoftness);
-        }
-
-        // Load GLB model
-        const loader = new GLTFLoader();
-        loader.load(modelUrl, (gltf) => {
-            const model = gltf.scene;
-
-            // Enable shadows on all meshes
-            model.traverse((child) => {
-                if (child.isMesh) {
-                    child.castShadow = true;
-                    child.receiveShadow = true;
-                }
-            });
-
-            // Center horizontally and place bottom at y=0 (keep original scale)
-            const box = new THREE.Box3().setFromObject(model);
-            const center = box.getCenter(new THREE.Vector3());
-            model.position.x = -center.x;
-            model.position.z = -center.z;
-            model.position.y = -box.min.y;
-
-            scene.add(model);
-
-            // Adjust camera to frame the model
-            const finalBox = new THREE.Box3().setFromObject(model);
-            const finalSize = finalBox.getSize(new THREE.Vector3());
-            const finalCenter = finalBox.getCenter(new THREE.Vector3());
-            const maxDim = Math.max(finalSize.x, finalSize.y, finalSize.z);
-            const distance = maxDim * 2;
-            if (savedCameraDir && currentSkybox) {
-                camera.position.copy(finalCenter).addScaledVector(savedCameraDir, distance);
-            } else {
-                camera.position.set(distance * 0.7, distance * 0.5, distance * 0.7);
-            }
-            camera.far = Math.max(maxDim * 100, 1000);
-            camera.updateProjectionMatrix();
-            controls.target.copy(finalCenter);
-            controls.update();
-
-            // Adapt shadow camera bounds to model size
-            const shadowExtent = maxDim * 2;
-            directionalLight.shadow.camera.left = -shadowExtent;
-            directionalLight.shadow.camera.right = shadowExtent;
-            directionalLight.shadow.camera.top = shadowExtent;
-            directionalLight.shadow.camera.bottom = -shadowExtent;
-            directionalLight.shadow.camera.far = maxDim * 10;
-            directionalLight.position.set(maxDim, maxDim * 2, maxDim);
-            directionalLight.shadow.camera.updateProjectionMatrix();
-
-            // Store model reference and dimensions for scale slider and skybox
-            viewer.model = model;
-            viewer.modelOriginalCenter = center.clone();
-            viewer.modelOriginalBoxMin = box.min.clone();
-            viewer.modelMaxDim = maxDim;
-
-            // Wire up the exposure slider
-            const exposureSlider = document.getElementById('exposure-slider');
-            const exposureLabel = document.getElementById('exposure-value');
-            if (exposureSlider) {
-                exposureSlider.addEventListener('input', () => {
-                    const exp = Math.pow(10, parseFloat(exposureSlider.value));
-                    exposureLabel.textContent = exp.toFixed(1);
-                    viewer.renderer.toneMappingExposure = exp;
-                });
-            }
-
-            // Wire up the light (environment intensity) slider
-            const lightSlider = document.getElementById('light-slider');
-            const lightLabel = document.getElementById('light-value');
-            if (lightSlider) {
-                lightSlider.addEventListener('input', () => {
-                    const intensity = Math.pow(10, parseFloat(lightSlider.value));
-                    lightLabel.textContent = intensity.toFixed(1);
-                    viewer.scene.environmentIntensity = intensity;
-                });
-            }
-
-            // Wire up the scale slider
-            const scaleSlider = document.getElementById('scale-slider');
-            const scaleLabel = document.getElementById('scale-value');
-            if (scaleSlider) {
-                scaleSlider.value = 0;
-                scaleSlider.addEventListener('input', () => {
-                    const scale = Math.pow(10, parseFloat(scaleSlider.value));
-                    scaleLabel.textContent = scale.toFixed(1) + 'x';
-                    updateModelScale(scale);
-                });
-            }
-
-            // Wire up the yaw slider
-            const yawSlider = document.getElementById('yaw-slider');
-            const yawLabel = document.getElementById('yaw-value');
-            if (yawSlider) {
-                yawSlider.value = 0;
-                yawSlider.addEventListener('input', () => {
-                    const yaw = parseFloat(yawSlider.value);
-                    const degrees = (yaw * 180 / Math.PI).toFixed(0);
-                    yawLabel.textContent = degrees + '\u00B0';
-                    updateModelYaw(yaw);
-                });
-            }
-
-            // Re-apply persisted skybox for the new model
-            if (currentSkybox) {
-                applySkybox(currentSkybox.id, currentSkybox.name, currentSkybox.extension,
-                    currentSkybox.height, currentSkybox.exposure,
-                    currentSkybox.shadowIntensity, currentSkybox.shadowSoftness);
-            }
-
-            // Show and wire up screenshot button
-            const screenshotBtn = document.getElementById('screenshot-btn');
-            if (screenshotBtn) {
-                screenshotBtn.classList.remove('d-none');
-                screenshotBtn.addEventListener('click', generateScreenshot);
-            }
-
-            console.log('GLB model loaded, max dimension:', maxDim);
-        }, undefined, (error) => {
-            console.error('Error loading GLB model:', error);
-            const statusElement = document.getElementById('model-status');
-            if (statusElement) {
-                statusElement.classList.remove('d-none');
-                statusElement.innerHTML = `
-                    <div class="alert alert-danger">
-                        <i class="bi bi-exclamation-triangle"></i> Error loading 3D model
-                    </div>
-                `;
-            }
-        });
-    });
-}
-
-function updateModelScale(scale) {
-    if (!viewer || !viewer.model) return;
-
-    const model = viewer.model;
-    const oldScale = model.scale.x; // Assuming uniform scaling
-    const ratio = scale / oldScale;
-    model.scale.setScalar(scale);
-
-    // Reposition so bottom stays at y=0
-    const box = new THREE.Box3().setFromObject(model);
-    model.position.y -= box.min.y;
-
-    // Adjust camera distance to maintain framing based on new model size
-    const newMaxDim = viewer.modelMaxDim * scale;
-    const oldPosition = viewer.camera.position.clone();
-    const oldTarget = viewer.controls.target.clone();
-    viewer.camera.position.set(oldPosition.x * ratio, oldPosition.y * ratio, oldPosition.z * ratio);
-    viewer.controls.target.set(oldTarget.x * ratio, oldTarget.y * ratio, oldTarget.z * ratio);
-    viewer.camera.far = Math.max(newMaxDim * 100, 1000);
-    viewer.camera.updateProjectionMatrix();
-}
-
-function updateModelYaw(yaw) {
-    if (!viewer || !viewer.model) return;
-    viewer.model.rotation.y = yaw;
 }
 
 function fetchSkyboxes() {
@@ -638,7 +292,7 @@ function fetchSkyboxes() {
         dropdown.addEventListener('change', (event) => {
             const selectedOption = event.target.options[event.target.selectedIndex];
             if (selectedOption.value) {
-                currentSkybox = {
+                state.currentSkybox = {
                     id: selectedOption.value,
                     name: selectedOption.textContent,
                     extension: selectedOption.dataset.extension,
@@ -647,20 +301,20 @@ function fetchSkyboxes() {
                     shadowIntensity: selectedOption.dataset.shadowIntensity,
                     shadowSoftness: selectedOption.dataset.shadowSoftness
                 };
-                applySkybox(currentSkybox.id, currentSkybox.name, currentSkybox.extension,
-                    currentSkybox.height, currentSkybox.exposure,
-                    currentSkybox.shadowIntensity, currentSkybox.shadowSoftness);
+                applySkybox(state.currentSkybox.id, state.currentSkybox.name, state.currentSkybox.extension,
+                    state.currentSkybox.height, state.currentSkybox.exposure,
+                    state.currentSkybox.shadowIntensity, state.currentSkybox.shadowSoftness);
             } else {
-                currentSkybox = null;
+                state.currentSkybox = null;
                 removeSkybox();
             }
         });
 
         // Restore previous skybox selection if switching models
-        if (currentSkybox) {
+        if (state.currentSkybox) {
             for (const opt of dropdown.options) {
-                if (opt.value === currentSkybox.id) {
-                    dropdown.value = currentSkybox.id;
+                if (opt.value === state.currentSkybox.id) {
+                    dropdown.value = state.currentSkybox.id;
                     break;
                 }
             }
@@ -674,15 +328,15 @@ function fetchSkyboxes() {
 }
 
 function applySkybox(id, name, extension, height, exposure, shadowIntensity, shadowSoftness) {
-    if (!viewer) {
+    if (!state.viewer) {
         console.error('Viewer not initialized');
         return;
     }
 
     // Reuse cached texture if same skybox is being re-applied (e.g. model switch)
-    if (currentSkybox && currentSkybox.texture && currentSkybox.id === id) {
+    if (state.currentSkybox && state.currentSkybox.texture && state.currentSkybox.id === id) {
         console.log('Reusing cached texture for skybox:', name);
-        applySkyboxTexture(currentSkybox.texture, height, exposure, shadowIntensity, shadowSoftness);
+        applySkyboxTexture(state.currentSkybox.texture, height, exposure, shadowIntensity, shadowSoftness);
         return;
     }
 
@@ -733,8 +387,8 @@ function applySkybox(id, name, extension, height, exposure, shadowIntensity, sha
             texture.mapping = THREE.EquirectangularReflectionMapping;
 
             // Cache the texture on currentSkybox for reuse on model switch
-            if (currentSkybox && currentSkybox.id === id) {
-                currentSkybox.texture = texture;
+            if (state.currentSkybox && state.currentSkybox.id === id) {
+                state.currentSkybox.texture = texture;
             }
 
             applySkyboxTexture(texture, height, exposure, shadowIntensity, shadowSoftness);
@@ -744,294 +398,4 @@ function applySkybox(id, name, extension, height, exposure, shadowIntensity, sha
     }).catch((error) => {
         console.error('Error fetching skybox image for', id, error);
     });
-}
-
-function applySkyboxTexture(texture, height, exposure, shadowIntensity, shadowSoftness) {
-    // Dispose previous skybox geometry (but not the texture if it's being reused)
-    if (viewer.skyboxTexture && viewer.skyboxTexture !== texture) {
-        viewer.skyboxTexture.dispose();
-    }
-    if (viewer.groundedSkybox) {
-        viewer.groundedSkybox.material.dispose();
-        viewer.groundedSkybox.geometry.dispose();
-        viewer.scene.remove(viewer.groundedSkybox);
-        viewer.groundedSkybox = null;
-    }
-    viewer.skyboxTexture = texture;
-
-    // Set environment for PBR lighting
-    viewer.scene.environment = texture;
-
-    // Apply exposure and sync slider
-    const expValue = exposure ? parseFloat(exposure) : 1.0;
-    viewer.renderer.toneMappingExposure = expValue;
-    const exposureSlider = document.getElementById('exposure-slider');
-    const exposureLabel = document.getElementById('exposure-value');
-    if (exposureSlider) {
-        exposureSlider.value = Math.log10(expValue);
-        exposureLabel.textContent = expValue.toFixed(1);
-    }
-
-    // Reset environment intensity and sync light slider
-    viewer.scene.environmentIntensity = 1.0;
-    const lightSlider = document.getElementById('light-slider');
-    const lightLabel = document.getElementById('light-value');
-    if (lightSlider) {
-        lightSlider.value = 0;
-        lightLabel.textContent = '1.0';
-    }
-
-    // Apply shadow intensity
-    if (shadowIntensity) {
-        viewer.shadowPlane.material.opacity = parseFloat(shadowIntensity);
-    } else {
-        viewer.shadowPlane.material.opacity = 0.3;
-    }
-
-    if (height) {
-        // Ground-projected skybox, radius scales with model size
-        const skyboxHeight = parseFloat(height);
-        const modelDim = viewer.modelMaxDim || 2;
-        const skyboxRadius = Math.max(modelDim * 50, 100);
-        const groundedSkybox = new GroundedSkybox(texture, skyboxHeight, skyboxRadius);
-        groundedSkybox.position.y = skyboxHeight - 0.01;
-        viewer.scene.add(groundedSkybox);
-        viewer.groundedSkybox = groundedSkybox;
-        viewer.scene.background = null;
-    } else {
-        // Regular surrounding skybox
-        viewer.scene.background = texture;
-    }
-
-    console.log('Skybox applied successfully');
-}
-
-function removeSkybox() {
-    if (!viewer) {
-        return;
-    }
-
-    console.log('Removing skybox');
-
-    // Dispose texture and grounded skybox mesh to free GPU memory
-    if (viewer.skyboxTexture) {
-        viewer.skyboxTexture.dispose();
-        viewer.skyboxTexture = null;
-    }
-    if (viewer.groundedSkybox) {
-        viewer.groundedSkybox.material.dispose();
-        viewer.groundedSkybox.geometry.dispose();
-        viewer.scene.remove(viewer.groundedSkybox);
-        viewer.groundedSkybox = null;
-    }
-
-    // Reset scene background and environment
-    viewer.scene.background = new THREE.Color(0xf8f9fa);
-    viewer.scene.environment = null;
-
-    // Reset exposure, environment intensity, shadow, and sync sliders
-    viewer.renderer.toneMappingExposure = 1.0;
-    viewer.scene.environmentIntensity = 1.0;
-    viewer.shadowPlane.material.opacity = 0.3;
-    const exposureSlider = document.getElementById('exposure-slider');
-    const exposureLabel = document.getElementById('exposure-value');
-    if (exposureSlider) {
-        exposureSlider.value = 0;
-        exposureLabel.textContent = '1.0';
-    }
-    const lightSliderEl = document.getElementById('light-slider');
-    const lightLabelEl = document.getElementById('light-value');
-    if (lightSliderEl) {
-        lightSliderEl.value = 0;
-        lightLabelEl.textContent = '1.0';
-    }
-}
-
-function generateScreenshot() {
-    if (!viewer || !viewer.model) return;
-
-    const canvas = document.getElementById('model-canvas');
-    const origWidth = canvas.clientWidth;
-    const origHeight = canvas.clientHeight;
-
-    // Render at 512x512
-    const size = 512;
-    viewer.renderer.setSize(size, size);
-    viewer.camera.aspect = 1;
-    viewer.camera.updateProjectionMatrix();
-    viewer.renderer.render(viewer.scene, viewer.camera);
-    const dataUrl = viewer.renderer.domElement.toDataURL('image/jpeg', 0.9);
-
-    // Restore original canvas size
-    viewer.renderer.setSize(origWidth, origHeight);
-    viewer.camera.aspect = origWidth / origHeight;
-    viewer.camera.updateProjectionMatrix();
-
-    const base64 = dataUrl.split(',')[1];
-
-    const payload = {
-        model3d_record_name: model3dRecordName,
-        model3d_name: document.getElementById('navbar-title').textContent.trim(),
-        skybox_record_name: currentSkybox ? currentSkybox.id : '',
-        skybox_name: currentSkybox ? currentSkybox.name : '',
-        model_scale: viewer.model.scale.x,
-        yaw_angle: viewer.model.rotation.y,
-        camera_position_x: viewer.camera.position.x,
-        camera_position_y: viewer.camera.position.y,
-        camera_position_z: viewer.camera.position.z,
-        camera_target_x: viewer.controls.target.x,
-        camera_target_y: viewer.controls.target.y,
-        camera_target_z: viewer.controls.target.z,
-        image_base64: base64,
-    };
-
-    // Open image in a new tab immediately (must be synchronous for mobile popup blocker)
-    const blob = dataUrlToBlob(dataUrl);
-    const blobUrl = URL.createObjectURL(blob);
-    window.open(blobUrl, '_blank');
-
-    // Save to backend in the background
-    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
-    fetch('/api/screenshots/save/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
-        body: JSON.stringify(payload),
-    })
-        .then(r => r.json())
-        .then(data => {
-            addScreenshotToGallery({ ...payload, id: data.id, image_base64: base64 });
-        })
-        .catch(error => {
-            console.error('Error saving screenshot:', error);
-        });
-}
-
-function dataUrlToBlob(dataUrl) {
-    const parts = dataUrl.split(',');
-    const mime = parts[0].match(/:(.*?);/)[1];
-    const bytes = atob(parts[1]);
-    const array = new Uint8Array(bytes.length);
-    for (let i = 0; i < bytes.length; i++) {
-        array[i] = bytes.charCodeAt(i);
-    }
-    return new Blob([array], { type: mime });
-}
-
-function loadScreenshots(recordName) {
-    fetch(`/api/screenshots/?model3d_record_name=${encodeURIComponent(recordName)}`)
-        .then(r => r.json())
-        .then(data => {
-            const gallery = document.getElementById('screenshot-gallery');
-            if (!gallery) return;
-            gallery.innerHTML = '';
-            if (data.screenshots && data.screenshots.length > 0) {
-                data.screenshots.forEach(s => addScreenshotToGallery(s));
-            }
-        })
-        .catch(error => {
-            console.error('Error loading screenshots:', error);
-        });
-}
-
-function addScreenshotToGallery(data) {
-    const gallery = document.getElementById('screenshot-gallery');
-    if (!gallery) return;
-
-    const dataUrl = `data:image/jpeg;base64,${data.image_base64}`;
-
-    const wrapper = document.createElement('div');
-    wrapper.className = 'screenshot-item position-relative';
-    wrapper.style.width = '128px';
-    wrapper.style.height = '128px';
-
-    const img = document.createElement('img');
-    img.src = dataUrl;
-    img.alt = `Screenshot ${data.id}`;
-    img.className = 'rounded border w-100 h-100';
-    img.style.objectFit = 'cover';
-    img.style.cursor = 'pointer';
-    img.addEventListener('click', () => restoreScreenshot(data));
-    wrapper.appendChild(img);
-
-    const actions = document.createElement('div');
-    actions.className = 'screenshot-actions position-absolute bottom-0 start-0 w-100 d-flex justify-content-around p-1';
-
-    const viewBtn = document.createElement('button');
-    viewBtn.className = 'btn btn-sm btn-light';
-    viewBtn.innerHTML = '<i class="bi bi-eye"></i>';
-    viewBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const blob = dataUrlToBlob(dataUrl);
-        window.open(URL.createObjectURL(blob), '_blank');
-    });
-    actions.appendChild(viewBtn);
-
-    const deleteBtn = document.createElement('button');
-    deleteBtn.className = 'btn btn-sm btn-light text-danger';
-    deleteBtn.innerHTML = '<i class="bi bi-trash"></i>';
-    deleteBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const preview = document.getElementById('delete-screenshot-preview');
-        const confirmBtn = document.getElementById('delete-screenshot-confirm');
-        const modalEl = document.getElementById('delete-screenshot-modal');
-        preview.src = dataUrl;
-        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
-        // Replace confirm button to clear previous listeners
-        const newConfirmBtn = confirmBtn.cloneNode(true);
-        confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
-        newConfirmBtn.addEventListener('click', () => {
-            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
-            fetch(`/api/screenshots/${data.id}/delete/`, {
-                method: 'POST',
-                headers: { 'X-CSRFToken': csrfToken },
-            })
-                .then(r => r.json())
-                .then(() => { wrapper.remove(); modal.hide(); })
-                .catch(err => console.error('Error deleting screenshot:', err));
-        });
-        modal.show();
-    });
-    actions.appendChild(deleteBtn);
-
-    wrapper.appendChild(actions);
-    gallery.appendChild(wrapper);
-}
-
-function restoreScreenshot(data) {
-    if (!viewer || !viewer.model) return;
-
-    // Restore skybox
-    const dropdown = document.getElementById('skybox-dropdown');
-    if (dropdown) {
-        const targetSkybox = data.skybox_record_name || '';
-        if (dropdown.value !== targetSkybox) {
-            dropdown.value = targetSkybox;
-            dropdown.dispatchEvent(new Event('change'));
-        }
-    }
-
-    // Restore scale
-    const scale = data.model_scale;
-    updateModelScale(scale);
-    const scaleSlider = document.getElementById('scale-slider');
-    const scaleLabel = document.getElementById('scale-value');
-    if (scaleSlider) {
-        scaleSlider.value = Math.log10(scale);
-        scaleLabel.textContent = scale.toFixed(1) + 'x';
-    }
-
-    // Restore yaw
-    const yaw = data.yaw_angle;
-    updateModelYaw(yaw);
-    const yawSlider = document.getElementById('yaw-slider');
-    const yawLabel = document.getElementById('yaw-value');
-    if (yawSlider) {
-        yawSlider.value = yaw;
-        yawLabel.textContent = (yaw * 180 / Math.PI).toFixed(0) + '\u00B0';
-    }
-
-    // Restore camera
-    viewer.camera.position.set(data.camera_position_x, data.camera_position_y, data.camera_position_z);
-    viewer.controls.target.set(data.camera_target_x, data.camera_target_y, data.camera_target_z);
-    viewer.controls.update();
 }
