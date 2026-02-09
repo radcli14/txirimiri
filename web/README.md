@@ -1,6 +1,9 @@
 # TXIRIMIRI Web App
 
-#### Video Demo: [YouTube](#)
+<img src="./txirimiri/static/txirimiri/icon_outlined.png" 
+    style="filter: invert(1) sepia(1) hue-rotate(69deg) saturate(19) brightness(0.628);">
+
+#### Video Demo: [YouTube](https://youtu.be/GhG3vA5Hm3w)
 
 ## Description:
 
@@ -15,12 +18,14 @@ I found that it was time-consuming to open each model in Blender, add a backgrou
 This web app will embed many of the common elements of this thumbnail generation process into a simplified, point-and-click interface.
 
 ### Key Features
+
 - Django provides backend, including securely serving the token for iCloud access, the HTML template, and models for the `Model3D`, `Skybox`, and `Screenshot`.
 - Model files in `.glb` format and Skybox files in `.hdr` or `.jpg` format are hosted on iCloud, which provides download URLs for the frontend client. The iCloud schema also include metadata such as name, description, and default visualization settings.
 - Bootstrap is used to create the UI, including a left sidebar for listing and model selection, a navigation bar, a visual controls panel in the upper right, and icons throughout.
 - [Three.js](https://threejs.org/) is used to load visualize the model in 3D, apply a `GroundedSkybox` for image based lighting and background scene, create orbiting camera controls, and generate screenshots.
 
 ## Distinctiveness and Complexity
+
 This capstone assignment includes various elements which are unique relative to the lectures and projects including in the main track of the course.
 Particularly, the focus on viewing 3D models using Three.js using client-side rendering deviates significantly from the homework exercises.
 Additionally, usage of iCloud SDK's to host model content, particularly the schema to host `.glb`-formatted model files and skyboxes, is unique. 
@@ -28,18 +33,19 @@ In fact, at the time I wrote the iOS-native tutorial, I had not found references
 
 ## What's Contained in Each File
 
-- `views.py`:
-- `models.py`:
+- `views.py`: Contains server endpoints. The `index` endpoint is the only one that renders a page (single page app). Other endpoints are for post requests to obtain an API token, save, load, and delete screenshots.
+- `models.py`: Contains `Model3D` and `Skybox` schemas, which mirror those that exist in the iCloud database. Additionally contains a `Screenshot` schema which holds the image itself as well as metadata that can be used to restore state used to generate it.
+
 
 ### `templates/txirimiri` Folder
-- `layout.html`:
-- `index.html`:
+- `layout.html`: The HTML template that includes headers that set up the page styling.
+- `index.html`: The single page app, with navigation bar, sidebar for model selection, main content with the 3D viewer and screenshots, and toolbar panel for view editing.
 
 ### `static/txirimiri` Folder
-- `index.js`:
-- `cloud.js`:
-- `bootstrap_ui.js`:
-- `three_viewer.js`:
+- `index.js`: Functions as a coordinator between the other three JavaScript files, and handles initialization of the app-wide state, and passing callbacks between.
+- `cloud.js`: Handles fetching from the iCloud database, including both "lightweight" fetch calls to obtain names and descriptions of all `Model3D` and `Skybox` records, and obtaining download URLs for larger files.
+- `bootstrap_ui.js`: Handles setting up click handlers for all of the Bootstrap components.
+- `three_viewer.js`: Initializes the Three.js scene and renderer based on a given model, generally in `.glb` format, and includes function callbacks for adding a skybox or changing visual properties of the environment or model.
 
 ## To Run the App
 To run a local copy, execute the following commands in the terminal.
@@ -57,5 +63,5 @@ Alternately, there is a Vercel-hosted build that can run in your browser with no
 As of the time of submission (9 Feb. 2026), the Vercel-hosted app will not enable data persistence of user-generated screenshots.
 This data persistence *does* however, work if you run the local version via `runserver`, which will use the Django-native persistence with the `sqlite3` database.
 As I worked on this capstone project, I started to like the end-product more and more, and am now considering publishing the iOS-native version on the App Store, with the web app as a companion.
-In this case, I'd likely use Apple authentication and the iCloud private database for user data persistence, at which time the Django integration would become unnecessary. 
-In other words, if you run that version, and see some of the Apple-native integrations, that means I've forked off of the capstone project into one of my own personal interest, using features that may not actually pass the project requirements, but are still pretty cool.
+In this case, I'd likely use Apple authentication and the iCloud private database for user data persistence, at which time the Django integration may become unnecessary. 
+In other words, if you run that version, and see some of the Apple-native integrations, that means I've forked off of the capstone project into one suiting my own personal interest, using features that may not actually pass the project requirements, but are still pretty cool.
