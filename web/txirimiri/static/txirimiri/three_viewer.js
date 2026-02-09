@@ -4,9 +4,27 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { HDRLoader } from 'three/addons/loaders/HDRLoader.js';
 import { GroundedSkybox } from 'three/addons/objects/GroundedSkybox.js';
 
-import { state } from './cloud.js';
+let state = null;
 
-export { THREE, HDRLoader };
+export function init(s) {
+    state = s;
+}
+
+export function saveCameraDirection() {
+    if (state.viewer && state.currentSkybox && state.viewer.controls) {
+        state.savedCameraDir = new THREE.Vector3()
+            .subVectors(state.viewer.camera.position, state.viewer.controls.target).normalize();
+    } else {
+        state.savedCameraDir = null;
+    }
+}
+
+export function disposeViewer() {
+    if (state.viewer) {
+        state.viewer.dispose();
+        state.viewer = null;
+    }
+}
 
 export function initializeViewer(modelUrl, onModelLoaded) {
     const viewerContainer = document.getElementById('viewer-container');
@@ -234,6 +252,36 @@ export function updateModelYaw(yaw) {
     const viewer = state.viewer;
     if (!viewer || !viewer.model) return;
     viewer.model.rotation.y = yaw;
+}
+
+export function loadSkyboxTexture(url, extension) {
+    return new Promise((resolve, reject) => {
+        const isHDR = extension.toLowerCase() === 'hdr';
+        const loader = isHDR ? new HDRLoader() : new THREE.TextureLoader();
+
+        // Append file extension as URL fragment so the loader recognizes the format
+        // (CloudKit URLs don't include the original file extension)
+        const skyboxUrl = url + '#.' + extension;
+
+        loader.load(skyboxUrl, (texture) => {
+            // Downscale large JPG textures for iOS Safari compatibility
+            if (!isHDR && texture.image && texture.image.width > 4096) {
+                const maxSize = 4096;
+                const aspect = texture.image.width / texture.image.height;
+                const canvas = document.createElement('canvas');
+                canvas.width = maxSize;
+                canvas.height = Math.round(maxSize / aspect);
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(texture.image, 0, 0, canvas.width, canvas.height);
+                texture.image = canvas;
+                texture.needsUpdate = true;
+                console.log('Downscaled texture to', canvas.width, 'x', canvas.height);
+            }
+
+            texture.mapping = THREE.EquirectangularReflectionMapping;
+            resolve(texture);
+        }, undefined, reject);
+    });
 }
 
 export function applySkyboxTexture(texture, height, exposure, shadowIntensity, shadowSoftness) {

@@ -1,5 +1,12 @@
-import { state } from './cloud.js';
-import { updateModelScale, updateModelYaw } from './three_viewer.js';
+let state = null;
+let updateModelScale = null;
+let updateModelYaw = null;
+
+export function init(s, callbacks) {
+    state = s;
+    updateModelScale = callbacks.updateModelScale;
+    updateModelYaw = callbacks.updateModelYaw;
+}
 
 export function generateModelItemHTML(name, description, id) {
     return `
@@ -16,7 +23,7 @@ export function generateModelItemHTML(name, description, id) {
     `;
 }
 
-export function buildModelDetailsPage(id, name, description, extension) {
+export function buildModelDetailsPage(description, extension) {
     return `
         <div class="container py-4">
             <div class="position-relative">
