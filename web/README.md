@@ -26,19 +26,35 @@ Particularly, the focus on viewing 3D models using Three.js using client-side re
 Additionally, usage of iCloud SDK's to host model content, particularly the schema to host `.glb`-formatted model files and skyboxes, is unique. 
 In fact, at the time I wrote the iOS-native tutorial, I had not found references to anyone else on the internet using this particular arrangement.
 
-### To Run the App
-To run a local copy, from the `web` folder, execute the following commands in the terminal.
+## What's Contained in Each File
+
+- `views.py`:
+- `models.py`:
+
+### `templates/txirimiri` Folder
+- `layout.html`:
+- `index.html`:
+
+### `static/txirimiri` Folder
+- `index.js`:
+- `cloud.js`:
+- `bootstrap_ui.js`:
+- `three_viewer.js`:
+
+## To Run the App
+To run a local copy, execute the following commands in the terminal.
 ```bash
 python manage.py makemigrations
 python manage.py migrate
 python manage.py runserver
 ``` 
 
-#### [Txirimiri on Vercel](https://txirimiri.vercel.app/)
+### [Txirimiri on Vercel](https://txirimiri.vercel.app/)
 
 Alternately, there is a Vercel-hosted build that can run in your browser with no installation, using the link above.
 
-**NOTE**: as of the time of submission (9 Feb. 2026), the Vercel-hosted app will not enable data persistence of user-generated screenshots.
+## Additional Information
+As of the time of submission (9 Feb. 2026), the Vercel-hosted app will not enable data persistence of user-generated screenshots.
 This data persistence *does* however, work if you run the local version via `runserver`, which will use the Django-native persistence with the `sqlite3` database.
 As I worked on this capstone project, I started to like the end-product more and more, and am now considering publishing the iOS-native version on the App Store, with the web app as a companion.
 In this case, I'd likely use Apple authentication and the iCloud private database for user data persistence, at which time the Django integration would become unnecessary. 
