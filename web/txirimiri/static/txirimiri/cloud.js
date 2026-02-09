@@ -11,9 +11,9 @@ export function init() {
         method: 'POST',
         headers: { 'X-CSRFToken': csrfToken },
     })
-    .then(r => r.json())
+    .then(response => response.json())
     .then(data => {
-        // Configures Cloudkit, see: https://developer.apple.com/documentation/cloudkitjs
+        // Configures CloudKit, see: https://developer.apple.com/documentation/cloudkitjs
         CloudKit.configure({
             containers: [{
                 containerIdentifier: 'iCloud.com.dcengineer.txirimiri',
@@ -36,8 +36,10 @@ export function init() {
 // of the 3D models, but not the larger model or image files.
 export function queryModelRecords() {
     const query = { recordType: 'Model3D' };
-    const options = { desiredKeys: ['name', 'description', 'extension', 'alt_extension'] };
-    return database.performQuery(query, options).then(response => {
+    return database.performQuery(query, { 
+        desiredKeys: ['name', 'description', 'extension', 'alt_extension'] 
+    })
+    .then(response => {
         if (response.hasErrors) throw response.errors[0];
         return response.records;
     });
@@ -47,7 +49,10 @@ export function queryModelRecords() {
 // larger than the name/description, so we want to do this fetch afterward in an
 // asynchronouse image viewer for each individual list item.
 export function fetchThumbnailUrl(id) {
-    return database.fetchRecords([id], { desiredKeys: ['thumbnail'] }).then(response => {
+    return database.fetchRecords([id], { 
+        desiredKeys: ['thumbnail'] 
+    })
+    .then(response => {
         if (response.hasErrors) throw response.errors[0];
         return response.records[0].fields.thumbnail?.value?.downloadURL || null;
     });
@@ -58,7 +63,10 @@ export function fetchThumbnailUrl(id) {
 export function fetchModelUrl(id, useAltModel) {
     const field = useAltModel ? 'alt_model' : 'model';
     console.log(`Fetching ${field} for record ${id}`);
-    return database.fetchRecords([id], { desiredKeys: [field] }).then(response => {
+    return database.fetchRecords([id], { 
+        desiredKeys: [field] 
+    })
+    .then(response => {
         if (response.hasErrors) throw response.errors[0];
         return response.records[0].fields[field]?.value?.downloadURL || null;
     });
@@ -70,8 +78,10 @@ export function fetchModelUrl(id, useAltModel) {
 // The image URLs will be fetched separately when the user selects a skybox.
 export function querySkyboxRecords() {
     const query = { recordType: 'Skybox' };
-    const options = { desiredKeys: ['name', 'extension', 'height', 'exposure', 'shadow_intensity', 'shadow_softness'] };
-    return database.performQuery(query, options).then(response => {
+    return database.performQuery(query, { 
+        desiredKeys: ['name', 'extension', 'height', 'exposure', 'shadow_intensity', 'shadow_softness'] 
+    })
+    .then(response => {
         if (response.hasErrors) throw response.errors[0];
         return response.records;
     });
@@ -81,7 +91,10 @@ export function querySkyboxRecords() {
 // do this fetch only when the user selects a skybox to load. The function takes 
 // the record ID of the selected skybox and returns the download URL for the image file.
 export function fetchSkyboxImageUrl(id) {
-    return database.fetchRecords([id], { desiredKeys: ['image'] }).then(response => {
+    return database.fetchRecords([id], { 
+        desiredKeys: ['image'] 
+    })
+    .then(response => {
         if (response.hasErrors) throw response.errors[0];
         return response.records[0].fields.image?.value?.downloadURL || null;
     });
