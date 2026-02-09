@@ -1,6 +1,7 @@
 import * as cloud from './cloud.js';
 import * as viewer from './three_viewer.js';
 import * as ui from './bootstrap_ui.js';
+import * as screenshotDb from './screenshot_db.js';
 
 // Shared state — passed by reference to viewer and ui modules
 const state = {
@@ -15,6 +16,9 @@ viewer.init(state);
 ui.init(state, {
     updateModelScale: viewer.updateModelScale,
     updateModelYaw: viewer.updateModelYaw,
+    saveScreenshot: screenshotDb.save,
+    getScreenshots: screenshotDb.getByModel,
+    deleteScreenshot: screenshotDb.remove,
 });
 
 // --- Entry point ---
@@ -22,7 +26,7 @@ ui.init(state, {
 document.addEventListener('DOMContentLoaded', () => {
     const modelList = document.getElementById('model-list');
 
-    cloud.init().then(() => cloud.queryModelRecords()).then(records => {
+    Promise.all([cloud.init(), screenshotDb.init()]).then(() => cloud.queryModelRecords()).then(records => {
         records.forEach(record => {
             const id = record.recordName;
             const name = record.fields.name.value;

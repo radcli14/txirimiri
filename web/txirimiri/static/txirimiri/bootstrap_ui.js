@@ -1,12 +1,19 @@
 let state = null;
 let updateModelScale = null;
 let updateModelYaw = null;
+let saveScreenshot = null;
+let getScreenshots = null;
+let deleteScreenshot = null;
 
-// Initializes the app state inside this script, with callbacks to handle scale or yaw slider interactions.
+// Initializes the app state inside this script, with callbacks to handle scale or yaw slider interactions
+// and screenshot persistence.
 export function init(s, callbacks) {
     state = s;
     updateModelScale = callbacks.updateModelScale;
     updateModelYaw = callbacks.updateModelYaw;
+    saveScreenshot = callbacks.saveScreenshot;
+    getScreenshots = callbacks.getScreenshots;
+    deleteScreenshot = callbacks.deleteScreenshot;
 }
 
 // This generates the list items to be used inside of the left sidebar.
@@ -184,16 +191,10 @@ export function generateScreenshot() {
     const blobUrl = URL.createObjectURL(blob);
     window.open(blobUrl, '_blank');
 
-    // Save to backend in the background
-    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
-    fetch('/api/screenshots/save/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
-        body: JSON.stringify(payload),
-    })
-    .then(r => r.json())
-    .then(data => {
-        addScreenshotToGallery({ ...payload, id: data.id, image_base64: base64 });
+    // Save to IndexedDB in the background
+    saveScreenshot(payload)
+    .then(id => {
+        addScreenshotToGallery({ ...payload, id, image_base64: base64 });
     })
     .catch(error => {
         console.error('Error saving screenshot:', error);
@@ -212,17 +213,14 @@ function dataUrlToBlob(dataUrl) {
     return new Blob([array], { type: mime });
 }
 
-// Fetches the list of screenshots from the API endpoint, and adds them each to the gallery.
+// Loads screenshots for a model from IndexedDB and adds them each to the gallery.
 export function loadScreenshots(recordName) {
-    fetch(`/api/screenshots/?model3d_record_name=${encodeURIComponent(recordName)}`)
-        .then(r => r.json())
-        .then(data => {
+    getScreenshots(recordName)
+        .then(screenshots => {
             const gallery = document.getElementById('screenshot-gallery');
             if (!gallery) return;
             gallery.innerHTML = '';
-            if (data.screenshots && data.screenshots.length > 0) {
-                data.screenshots.forEach(s => addScreenshotToGallery(s));
-            }
+            screenshots.forEach(s => addScreenshotToGallery(s));
         })
         .catch(error => {
             console.error('Error loading screenshots:', error);
@@ -278,12 +276,7 @@ export function addScreenshotToGallery(data) {
         const newConfirmBtn = confirmBtn.cloneNode(true);
         confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
         newConfirmBtn.addEventListener('click', () => {
-            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
-            fetch(`/api/screenshots/${data.id}/delete/`, {
-                method: 'POST',
-                headers: { 'X-CSRFToken': csrfToken },
-            })
-                .then(r => r.json())
+            deleteScreenshot(data.id)
                 .then(() => { wrapper.remove(); modal.hide(); })
                 .catch(err => console.error('Error deleting screenshot:', err));
         });
