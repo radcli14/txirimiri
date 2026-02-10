@@ -10,6 +10,10 @@ load_dotenv()
 
 
 def index(request):
+    print("index called")
+    if request.method == "POST":
+        print(" - with post request", request.POST)
+        
     return render(request, "txirimiri/index.html")
 
 

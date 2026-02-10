@@ -33,6 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
         cloud.queryModelRecords(),
     ]))
     .then(([userIdentity, records]) => {
+        console.log("userIdentity", userIdentity);
         records.forEach(record => {
             const id = record.recordName;
             const name = record.fields.name.value;

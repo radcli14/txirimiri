@@ -20,7 +20,9 @@ export function init() {
                 containerIdentifier: 'iCloud.com.dcengineer.txirimiri',
                 apiTokenAuth: {
                     apiToken: data.api_token,
-                    persist: true
+                    persist: true,
+                    signInButton: { id: 'apple-sign-in-button', theme: 'black' },
+                    signOutButton: { id: 'apple-sign-out-button', theme: 'black' }
                 },
                 environment: 'development'
             }]
@@ -105,6 +107,12 @@ export function fetchSkyboxImageUrl(id) {
 // The onAuthStateChanged callback is called with the userIdentity on sign-in, or null on sign-out.
 // Returns a promise that resolves with the initial userIdentity (or null).
 export function setUpAuth(onAuthStateChanged) {
+    console.log("CloudKit.setupAuth called");
+    // Debug: log every postMessage received so we can see what the popup sends back
+    window.addEventListener('message', (event) => {
+        console.log('postMessage received:', event.origin, event.data);
+    });
+
     function onSignIn(userIdentity) {
         console.log('CloudKit whenUserSignsIn fired:', userIdentity);
         onAuthStateChanged(userIdentity);
@@ -120,9 +128,7 @@ export function setUpAuth(onAuthStateChanged) {
     container.whenUserSignsIn().then(onSignIn);
     container.whenUserSignsOut().then(onSignOut);
 
-    return container.setUpAuth({
-        containerEl: document.getElementById('apple-sign-in-button'),
-    }).then(userIdentity => {
+    return container.setUpAuth().then(userIdentity => {
         console.log('CloudKit setUpAuth resolved:', userIdentity);
         onAuthStateChanged(userIdentity);
         return userIdentity;
