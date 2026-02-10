@@ -1,3 +1,4 @@
+let container = null;
 let database = null;
 
 // After the init function is called, the CloudKit JS library will be configured 
@@ -25,8 +26,8 @@ export function init() {
             }]
         });
 
-        // The database variable is non-null once this completes
-        const container = CloudKit.getDefaultContainer();
+        // The container and database variables are non-null once this completes
+        container = CloudKit.getDefaultContainer();
         database = container.publicCloudDatabase;
         console.log('CloudKit configured and initialized');
     });
@@ -87,15 +88,43 @@ export function querySkyboxRecords() {
     });
 }
 
-// Fetch the URL for the skybox image file. These are large files, so we want to 
-// do this fetch only when the user selects a skybox to load. The function takes 
+// Fetch the URL for the skybox image file. These are large files, so we want to
+// do this fetch only when the user selects a skybox to load. The function takes
 // the record ID of the selected skybox and returns the download URL for the image file.
 export function fetchSkyboxImageUrl(id) {
-    return database.fetchRecords([id], { 
-        desiredKeys: ['image'] 
+    return database.fetchRecords([id], {
+        desiredKeys: ['image']
     })
     .then(response => {
         if (response.hasErrors) throw response.errors[0];
         return response.records[0].fields.image?.value?.downloadURL || null;
+    });
+}
+
+// Sets up CloudKit authentication using Apple's built-in sign-in/sign-out buttons.
+// The onAuthStateChanged callback is called with the userIdentity on sign-in, or null on sign-out.
+// Returns a promise that resolves with the initial userIdentity (or null).
+export function setUpAuth(onAuthStateChanged) {
+    function onSignIn(userIdentity) {
+        console.log('CloudKit whenUserSignsIn fired:', userIdentity);
+        onAuthStateChanged(userIdentity);
+        container.whenUserSignsIn().then(onSignIn);
+    }
+
+    function onSignOut() {
+        console.log('CloudKit whenUserSignsOut fired');
+        onAuthStateChanged(null);
+        container.whenUserSignsOut().then(onSignOut);
+    }
+
+    container.whenUserSignsIn().then(onSignIn);
+    container.whenUserSignsOut().then(onSignOut);
+
+    return container.setUpAuth({
+        containerEl: document.getElementById('apple-sign-in-button'),
+    }).then(userIdentity => {
+        console.log('CloudKit setUpAuth resolved:', userIdentity);
+        onAuthStateChanged(userIdentity);
+        return userIdentity;
     });
 }

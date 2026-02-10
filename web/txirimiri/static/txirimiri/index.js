@@ -9,6 +9,7 @@ const state = {
     currentSkybox: null,
     savedCameraDir: null,
     model3dRecordName: null,
+    userIdentity: null,
 };
 
 // Initialize modules with shared state
@@ -26,7 +27,12 @@ ui.init(state, {
 document.addEventListener('DOMContentLoaded', () => {
     const modelList = document.getElementById('model-list');
 
-    Promise.all([cloud.init(), screenshotDb.init()]).then(() => cloud.queryModelRecords()).then(records => {
+    Promise.all([cloud.init(), screenshotDb.init()])
+    .then(() => Promise.all([
+        cloud.setUpAuth(onAuthStateChanged).catch(err => { console.warn('Auth setup failed:', err); return null; }),
+        cloud.queryModelRecords(),
+    ]))
+    .then(([userIdentity, records]) => {
         records.forEach(record => {
             const id = record.recordName;
             const name = record.fields.name.value;
@@ -81,6 +87,27 @@ document.addEventListener('DOMContentLoaded', () => {
         console.error('Error fetching models:', error);
     });
 });
+
+// --- Auth callback ---
+
+function onAuthStateChanged(userIdentity) {
+    console.log('onAuthStateChanged:', userIdentity);
+    state.userIdentity = userIdentity;
+
+    const userNameEl = document.getElementById('auth-user-name');
+    if (!userNameEl) return;
+
+    if (userIdentity) {
+        const name = userIdentity.nameComponents
+            ? `${userIdentity.nameComponents.givenName || ''} ${userIdentity.nameComponents.familyName || ''}`.trim()
+            : '';
+        userNameEl.textContent = name || 'Signed in';
+        userNameEl.classList.remove('d-none');
+    } else {
+        userNameEl.textContent = '';
+        userNameEl.classList.add('d-none');
+    }
+}
 
 // --- Orchestration functions ---
 
