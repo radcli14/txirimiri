@@ -31,34 +31,17 @@ cloud.init().then(() => {
             console.log("Origin: received token via BroadcastChannel");
             document.getElementById('ck-web-auth-token').textContent = "ckWebAuthToken: " + event.data.ckWebAuthToken;
 
-            // Verify the token and look up user identity via CloudKit REST API
+            // Verify the token via CloudKit REST API
             cloud.fetchApiToken().then(apiToken => {
                 const encodedToken = encodeURIComponent(event.data.ckWebAuthToken);
-                // First get the current user record name
-                return fetch(`https://api.apple-cloudkit.com/database/1/iCloud.com.dcengineer.txirimiri/development/public/users/current?ckAPIToken=${apiToken}&ckWebAuthToken=${encodedToken}`)
-                    .then(r => r.json())
-                    .then(data => {
-                        console.log("CloudKit REST API user lookup:", data);
-                        if (!data.userRecordName) throw new Error("No user record");
-
-                        // Try to discover the user's name
-                        return fetch(`https://api.apple-cloudkit.com/database/1/iCloud.com.dcengineer.txirimiri/development/public/users/discover?ckAPIToken=${apiToken}&ckWebAuthToken=${encodedToken}`)
-                            .then(r => r.json())
-                            .then(discoverData => {
-                                console.log("CloudKit REST API discover:", discoverData);
-                                const users = discoverData.users || [];
-                                const self = users.find(u => u.userRecordName === data.userRecordName);
-                                if (self && (self.firstName || self.lastName)) {
-                                    displayUserName(`${self.firstName || ''} ${self.lastName || ''}`.trim());
-                                } else {
-                                    displayUserName('Signed In');
-                                }
-                            })
-                            .catch(() => {
-                                // Discover failed, just show signed in
-                                displayUserName('Signed In');
-                            });
-                    });
+                return fetch(`https://api.apple-cloudkit.com/database/1/iCloud.com.dcengineer.txirimiri/development/public/users/current?ckAPIToken=${apiToken}&ckWebAuthToken=${encodedToken}`);
+            })
+            .then(r => r.json())
+            .then(data => {
+                console.log("CloudKit REST API user lookup:", data);
+                if (data.userRecordName) {
+                    gotoAuthenticatedState({ userRecordName: data.userRecordName });
+                }
             })
             .catch(err => console.error("REST API error:", err));
         }
@@ -87,27 +70,15 @@ function displayUserName(name) {
 }
 
 function gotoUnauthenticatedState(error) {
-
     console.log(" - Unauthenticated state, error:", error);
-
-    if(error && error.ckErrorCode === 'AUTH_PERSIST_ERROR') {
-        console.log(" - AUTH_PERSIST_ERROR");
-    }
-
     displayUserName('Unauthenticated User');
-    cloud.container
-        .whenUserSignsIn()
-        .then(gotoAuthenticatedState)
-        .catch(gotoUnauthenticatedState);
+    document.getElementById('apple-sign-in-button').style.display = '';
+    document.getElementById('apple-sign-out-button').style.display = 'none';
 }
 
 function gotoAuthenticatedState(userInfo) {
-    if(userInfo.isDiscoverable) {
-        displayUserName(userInfo.firstName + ' ' + userInfo.lastName);
-    } else {
-        displayUserName('User record name: ' + userInfo.userRecordName);
-    }
-    cloud.container
-        .whenUserSignsOut()
-        .then(gotoUnauthenticatedState);
+    console.log(" - Authenticated state:", userInfo);
+    displayUserName('Signed In');
+    document.getElementById('apple-sign-in-button').style.display = 'none';
+    document.getElementById('apple-sign-out-button').style.display = '';
 }
