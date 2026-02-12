@@ -26,50 +26,54 @@ cloud.init().then(() => {
     const authPromise = cloud.container.setUpAuth();
 
     const channel = new BroadcastChannel('cloudkit-auth');
-    channel.onmessage = (event) => {
-        if (event.data.ckWebAuthToken) {
-            console.log("Origin: received token via BroadcastChannel");
-            document.getElementById('ck-web-auth-token').textContent = "ckWebAuthToken: " + event.data.ckWebAuthToken;
+    channel.onmessage = onReceiveAuthToken;
 
-            // Verify the token via CloudKit REST API
-            cloud.fetchApiToken().then(apiToken => {
-                const encodedToken = encodeURIComponent(event.data.ckWebAuthToken);
-                return fetch(`https://api.apple-cloudkit.com/database/1/iCloud.com.dcengineer.txirimiri/development/public/users/current?ckAPIToken=${apiToken}&ckWebAuthToken=${encodedToken}`);
+    authPromise.then(onReceiveUserIdentity);
+})
+
+function onReceiveUserData(data) {
+    console.log("CloudKit REST API user lookup:", data);
+    if (data.userRecordName) {
+        // Fetch the user's name and thumbnail from the Users record
+        cloud.fetchUserRecord(data.userRecordName)
+            .then(userRecord => {
+                console.log("User record:", userRecord);
+                gotoAuthenticatedState(userRecord);
             })
-            .then(r => r.json())
-            .then(data => {
-                console.log("CloudKit REST API user lookup:", data);
-                if (data.userRecordName) {
-                    // Fetch the user's name and thumbnail from the Users record
-                    cloud.fetchUserRecord(data.userRecordName)
-                        .then(userRecord => {
-                            console.log("User record:", userRecord);
-                            gotoAuthenticatedState(userRecord);
-                        })
-                        .catch(err => {
-                            console.warn("Could not fetch user record:", err);
-                            gotoAuthenticatedState({ name: null, thumbnailUrl: null });
-                        });
-                }
-            })
-            .catch(err => console.error("REST API error:", err));
-        }
-    };
+            .catch(err => {
+                console.warn("Could not fetch user record:", err);
+                gotoAuthenticatedState({ name: null, thumbnailUrl: null });
+            });
+    }
+}
 
-    authPromise.then(function(userIdentity) {
+function onReceiveAuthToken(event) {
+    if (event.data.ckWebAuthToken) {
+        console.log("Origin: received token via BroadcastChannel");
 
-      // Either a sign-in or a sign-out button was added to the DOM.
+        // Verify the token via CloudKit REST API
+        cloud.fetchApiToken().then(apiToken => {
+            const encodedToken = encodeURIComponent(event.data.ckWebAuthToken);
+            return fetch(`https://api.apple-cloudkit.com/database/1/iCloud.com.dcengineer.txirimiri/development/public/users/current?ckAPIToken=${apiToken}&ckWebAuthToken=${encodedToken}`);
+        })
+        .then(r => r.json())
+        .then(onReceiveUserData)
+        .catch(err => console.error("REST API error:", err));
+    }
+}
 
-      // userIdentity is the signed-in user or null.
-      if(userIdentity) {
+function onReceiveUserIdentity(userIdentity) {
+    // Either a sign-in or a sign-out button was added to the DOM.
+
+    // userIdentity is the signed-in user or null.
+    if(userIdentity) {
         console.log(" - userIdentity:", userIdentity);
         gotoAuthenticatedState(userIdentity);
-      } else {
+    } else {
         console.log(" - unidentified user");
         gotoUnauthenticatedState();
-      }
-    });
-})
+    }
+}
 
 function displayUserName(name) {
     var displayedUserName = document.getElementById('displayed-username');
@@ -83,6 +87,7 @@ function gotoUnauthenticatedState(error) {
     displayUserName('Unauthenticated User');
     document.getElementById('apple-sign-in-button').style.display = '';
     document.getElementById('apple-sign-out-button').style.display = 'none';
+    document.getElementById('user-thumbnail-container').style.display = 'none';
 }
 
 function gotoAuthenticatedState(userInfo) {
@@ -90,4 +95,24 @@ function gotoAuthenticatedState(userInfo) {
     displayUserName(userInfo.name || 'Signed In');
     document.getElementById('apple-sign-in-button').style.display = 'none';
     document.getElementById('apple-sign-out-button').style.display = '';
+
+    const container = document.getElementById('user-thumbnail-container');
+    const img = document.getElementById('user-thumbnail');
+    const placeholder = document.getElementById('user-thumbnail-placeholder');
+
+    container.style.display = '';
+    if (userInfo.thumbnailUrl) {
+        img.onload = () => {
+            img.style.display = '';
+            placeholder.style.display = 'none';
+        };
+        img.onerror = () => {
+            img.style.display = 'none';
+            placeholder.style.display = '';
+        };
+        img.src = userInfo.thumbnailUrl;
+    } else {
+        img.style.display = 'none';
+        placeholder.style.display = '';
+    }
 }

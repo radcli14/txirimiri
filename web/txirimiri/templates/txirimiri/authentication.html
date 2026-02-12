@@ -12,13 +12,17 @@
 <h1>Authentication</h1>
 
 <div>
+    <div id="user-thumbnail-container" style="display:none;">
+        <img id="user-thumbnail" alt="User thumbnail"
+             style="width:80px; height:80px; border-radius:50%; object-fit:cover;">
+        <div id="user-thumbnail-placeholder"
+             style="width:80px; height:80px; border-radius:50%; background:#6c757d;
+                    display:flex; align-items:center; justify-content:center;
+                    color:white; font-size:2rem;">&#128100;</div>
+    </div>
     <h2 id="displayed-username"></h2>
     <div id="apple-sign-in-button"></div>
     <div id="apple-sign-out-button"></div>
 </div>
-
-<p>{{ request }} </p>
-<div id = "ck-web-auth-token">ckWebAuthToken: {{ ckWebAuthToken }}</div>
-<p>ckSession: {{ ckSession }} </p>
 
 {% endblock %}
