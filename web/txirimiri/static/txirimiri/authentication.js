@@ -1,9 +1,19 @@
 import * as cloud from './cloud.js';
 
+// If this page was loaded as an auth redirect callback (has ckWebAuthToken in URL),
+// send the token back to the opener window via postMessage and close the popup.
+const params = new URLSearchParams(window.location.search);
+const ckWebAuthToken = params.get('ckWebAuthToken');
+if (ckWebAuthToken && window.opener) {
+    window.opener.postMessage({ ckWebAuthToken }, window.opener.location.origin);
+    window.close();
+}
+
 cloud.init().then(() => {
     console.log("In authentication.js now");
     console.log(" - container:", cloud.container);
     console.log(" - database:", cloud.database);
+    console.log(" - ckWebAuthToken:", ckWebAuthToken);
 
       // Check a user is signed in and render the appropriate button.
     cloud.container.setUpAuth()

@@ -18,14 +18,22 @@ def index(request):
 
 
 def authentication(request):
-    print("authentication called")
+    print(f"authentication called with request: {request}")
     req = f"request: {request}"
+    ckWebAuthToken = ""
+    ckSession = ""
+    if request.method == "GET":
+        req = f"GET: {request.GET}"
+        ckWebAuthToken = request.GET.get("ckWebAuthToken", "")
+        ckSession = request.GET.get("ckWebAuthToken", "")
     if request.method == "POST":
         print(" - with post request", request.POST)
         req = f"POST: {request.POST}"
         
     return render(request, "txirimiri/authentication.html", {
-        "request": req
+        "request": req,
+        "ckWebAuthToken": ckWebAuthToken,
+        "ckSession": ckSession
     })
 
 
