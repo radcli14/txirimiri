@@ -38,7 +38,7 @@ export function init() {
         container = CloudKit.getDefaultContainer();
         database = container.publicCloudDatabase;
         console.log('CloudKit configured and initialized');
-        console.log("APIToken", data.api_token);
+        console.log("APIToken not null?", data.api_token !== null);
     });
 }
 
