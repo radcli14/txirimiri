@@ -1,4 +1,5 @@
 import * as cloud from './cloud.js';
+import * as userDb from './user_db.js';
 
 // Parse the ckWebAuthToken from the URL if this page was loaded as an auth redirect
 // callback (popup). If present, broadcast to the origin page via BroadcastChannel.
@@ -14,17 +15,16 @@ if (ckWebAuthToken) {
 }
 
 // This code only runs on the origin page (no ckWebAuthToken in URL).
-// First, try to restore user from Django session
+// First, initialize user database and try to restore user from IndexedDB
 document.addEventListener('DOMContentLoaded', () => {
-    fetch('/api/get-user-session/')
-        .then(r => r.json())
-        .then(sessionData => {
-            if (sessionData.userRecordName) {
-                console.log("Restoring user from Django session:", sessionData);
-                gotoAuthenticatedState(sessionData);
-            }
-        })
-        .catch(err => console.log("No session to restore:", err));
+    userDb.init().then(() => {
+        return userDb.getUser();
+    }).then(userData => {
+        if (userData && userData.userRecordName) {
+            console.log("Restoring user from IndexedDB:", userData);
+            gotoAuthenticatedState(userData);
+        }
+    }).catch(err => console.log("No user to restore:", err));
 });
 
 cloud.init().then(() => {
@@ -43,14 +43,12 @@ cloud.init().then(() => {
 
     authPromise.then(onReceiveUserIdentity).catch(err => {
         console.error("setUpAuth error:", err);
-        // Don't go to unauthenticated state if we have a Django session
-        fetch('/api/get-user-session/')
-            .then(r => r.json())
-            .then(sessionData => {
-                if (!sessionData.userRecordName) {
-                    gotoUnauthenticatedState(err);
-                }
-            });
+        // Don't go to unauthenticated state if we have a saved user in IndexedDB
+        userDb.getUser().then(userData => {
+            if (!userData || !userData.userRecordName) {
+                gotoUnauthenticatedState(err);
+            }
+        }).catch(() => gotoUnauthenticatedState(err));
     });
 
     // Also check if user is already authenticated
@@ -151,14 +149,9 @@ function gotoUnauthenticatedState(error, isSignOut = false) {
 }
 
 function clearUserSession() {
-    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
-    fetch('/api/clear-user-session/', {
-        method: 'POST',
-        headers: { 'X-CSRFToken': csrfToken }
-    })
-    .then(response => response.json())
-    .then(data => console.log('User session cleared:', data))
-    .catch(err => console.error('Error clearing user session:', err));
+    userDb.clearUser()
+        .then(() => console.log('User data cleared from IndexedDB'))
+        .catch(err => console.error('Error clearing user data:', err));
 }
 
 function gotoAuthenticatedState(userInfo) {
@@ -202,20 +195,7 @@ function gotoAuthenticatedState(userInfo) {
 }
 
 function saveUserToSession(userInfo) {
-    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
-    fetch('/api/save-user-session/', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': csrfToken
-        },
-        body: JSON.stringify({
-            userRecordName: userInfo.userRecordName,
-            name: userInfo.name,
-            thumbnailUrl: userInfo.thumbnailUrl
-        })
-    })
-    .then(response => response.json())
-    .then(data => console.log('User session saved:', data))
-    .catch(err => console.error('Error saving user session:', err));
+    userDb.saveUser(userInfo)
+        .then(() => console.log('User data saved to IndexedDB:', userInfo))
+        .catch(err => console.error('Error saving user data:', err));
 }
