@@ -1,15 +1,13 @@
 import * as cloud from './cloud.js';
 
-// If this page was loaded as an auth redirect callback (has ckWebAuthToken in URL),
-// send the token back to the main page via BroadcastChannel and close the popup.
-// We use BroadcastChannel because window.opener is null after Apple's cross-origin auth flow.
+// Parse the ckWebAuthToken from the URL if this page was loaded as an auth redirect callback.
+// Broadcast it to any listening pages (e.g. the main page) via BroadcastChannel.
 const params = new URLSearchParams(window.location.search);
 const ckWebAuthToken = params.get('ckWebAuthToken');
 if (ckWebAuthToken) {
     const channel = new BroadcastChannel('cloudkit-auth');
     channel.postMessage({ ckWebAuthToken });
     channel.close();
-    window.close();
 }
 
 cloud.init().then(() => {
