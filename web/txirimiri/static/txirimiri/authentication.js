@@ -14,6 +14,17 @@ if (ckWebAuthToken) {
 }
 
 // This code only runs on the origin page (no ckWebAuthToken in URL).
+// First, try to restore user from Django session
+fetch('/api/get-user-session/')
+    .then(r => r.json())
+    .then(sessionData => {
+        if (sessionData.userRecordName) {
+            console.log("Restoring user from Django session:", sessionData);
+            gotoAuthenticatedState(sessionData);
+        }
+    })
+    .catch(err => console.log("No session to restore:", err));
+
 cloud.init().then(() => {
     console.log("In authentication.js now");
     console.log(" - container:", cloud.container);
@@ -30,7 +41,14 @@ cloud.init().then(() => {
 
     authPromise.then(onReceiveUserIdentity).catch(err => {
         console.error("setUpAuth error:", err);
-        gotoUnauthenticatedState(err);
+        // Don't go to unauthenticated state if we have a Django session
+        fetch('/api/get-user-session/')
+            .then(r => r.json())
+            .then(sessionData => {
+                if (!sessionData.userRecordName) {
+                    gotoUnauthenticatedState(err);
+                }
+            });
     });
 
     // Also check if user is already authenticated
