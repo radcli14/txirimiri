@@ -110,4 +110,15 @@ export function fetchSkyboxImageUrl(id) {
     });
 }
 
-
+// Listen for auth token from the authentication popup via BroadcastChannel.
+// Apple's COOP headers nullify window.opener, so we use BroadcastChannel instead.
+export function listenForAuth(onAuthReceived) {
+    const channel = new BroadcastChannel('cloudkit-auth');
+    channel.onmessage = (event) => {
+        console.log('Auth token received via BroadcastChannel:', event.data);
+        if (event.data.ckWebAuthToken) {
+            onAuthReceived(event.data.ckWebAuthToken);
+        }
+    };
+    return channel;
+}

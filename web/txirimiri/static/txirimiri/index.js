@@ -26,6 +26,11 @@ ui.init(state, {
 document.addEventListener('DOMContentLoaded', () => {
     const modelList = document.getElementById('model-list');
 
+    // Listen for auth token from the authentication popup
+    cloud.listenForAuth((ckWebAuthToken) => {
+        console.log('User authenticated, token received');
+    });
+
     Promise.all([cloud.init(), screenshotDb.init()])
     .then(() => cloud.queryModelRecords())
     .then(records => {
