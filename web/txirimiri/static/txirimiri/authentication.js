@@ -31,18 +31,34 @@ cloud.init().then(() => {
             console.log("Origin: received token via BroadcastChannel");
             document.getElementById('ck-web-auth-token').textContent = "ckWebAuthToken: " + event.data.ckWebAuthToken;
 
-            // Verify the token by calling CloudKit Web Services REST API directly
+            // Verify the token and look up user identity via CloudKit REST API
             cloud.fetchApiToken().then(apiToken => {
                 const encodedToken = encodeURIComponent(event.data.ckWebAuthToken);
-                console.log(" - after fetchApiToken");
-                return fetch(`https://api.apple-cloudkit.com/database/1/iCloud.com.dcengineer.txirimiri/development/public/users/current?ckAPIToken=${apiToken}&ckWebAuthToken=${encodedToken}`);
-            })
-            .then(r => r.json())
-            .then(data => {
-                console.log("CloudKit REST API user lookup:", data);
-                if (data.userRecordName) {
-                    displayUserName('User: ' + data.userRecordName);
-                }
+                // First get the current user record name
+                return fetch(`https://api.apple-cloudkit.com/database/1/iCloud.com.dcengineer.txirimiri/development/public/users/current?ckAPIToken=${apiToken}&ckWebAuthToken=${encodedToken}`)
+                    .then(r => r.json())
+                    .then(data => {
+                        console.log("CloudKit REST API user lookup:", data);
+                        if (!data.userRecordName) throw new Error("No user record");
+
+                        // Try to discover the user's name
+                        return fetch(`https://api.apple-cloudkit.com/database/1/iCloud.com.dcengineer.txirimiri/development/public/users/discover?ckAPIToken=${apiToken}&ckWebAuthToken=${encodedToken}`)
+                            .then(r => r.json())
+                            .then(discoverData => {
+                                console.log("CloudKit REST API discover:", discoverData);
+                                const users = discoverData.users || [];
+                                const self = users.find(u => u.userRecordName === data.userRecordName);
+                                if (self && (self.firstName || self.lastName)) {
+                                    displayUserName(`${self.firstName || ''} ${self.lastName || ''}`.trim());
+                                } else {
+                                    displayUserName('Signed In');
+                                }
+                            })
+                            .catch(() => {
+                                // Discover failed, just show signed in
+                                displayUserName('Signed In');
+                            });
+                    });
             })
             .catch(err => console.error("REST API error:", err));
         }
