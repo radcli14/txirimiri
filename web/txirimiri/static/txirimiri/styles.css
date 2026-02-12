@@ -79,3 +79,19 @@ body {
     overflow: hidden;
     text-overflow: ellipsis;
 }
+
+.user-icon {
+    width: 128px;
+    height: 128px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.user-icon-placeholder {
+    background: #6c757d;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 3rem;
+}

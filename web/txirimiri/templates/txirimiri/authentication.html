@@ -9,20 +9,22 @@
 {% block body %}
 {% csrf_token %}
 
-<h1>Authentication</h1>
-
-<div>
-    <div id="user-thumbnail-container" style="display:none;">
-        <img id="user-thumbnail" alt="User thumbnail"
-             style="width:80px; height:80px; border-radius:50%; object-fit:cover;">
-        <div id="user-thumbnail-placeholder"
-             style="width:80px; height:80px; border-radius:50%; background:#6c757d;
-                    display:flex; align-items:center; justify-content:center;
-                    color:white; font-size:2rem;">&#128100;</div>
+<div class="container text-center py-4">
+    <h2>Authentication</h2>
+    <div id="user-thumbnail-container" class="d-inline-block">
+        <img id="user-thumbnail" alt="User thumbnail" class="user-icon" style="display:none;">
+        <div id="user-thumbnail-placeholder" class="user-icon user-icon-placeholder" style="display:none;">
+            <i class="bi bi-person"></i>
+        </div>
+        <div id="user-thumbnail-unauthenticated" class="user-icon user-icon-placeholder">
+            <i class="bi bi-person-slash"></i>
+        </div>
     </div>
-    <h2 id="displayed-username"></h2>
-    <div id="apple-sign-in-button"></div>
-    <div id="apple-sign-out-button"></div>
+    <h5 id="displayed-username"></h5>
+</div>
+<div style="display: flex; justify-content: center;">
+    <div id="apple-sign-in-button" class="d-inline-block"></div>
+    <div id="apple-sign-out-button" class="d-inline-block"></div>
 </div>
 
 {% endblock %}

@@ -87,7 +87,11 @@ function gotoUnauthenticatedState(error) {
     displayUserName('Unauthenticated User');
     document.getElementById('apple-sign-in-button').style.display = '';
     document.getElementById('apple-sign-out-button').style.display = 'none';
-    document.getElementById('user-thumbnail-container').style.display = 'none';
+
+    // Show unauthenticated icon, hide authenticated thumbnail/placeholder
+    document.getElementById('user-thumbnail').style.display = 'none';
+    document.getElementById('user-thumbnail-placeholder').style.display = 'none';
+    document.getElementById('user-thumbnail-unauthenticated').style.display = '';
 }
 
 function gotoAuthenticatedState(userInfo) {
@@ -96,23 +100,31 @@ function gotoAuthenticatedState(userInfo) {
     document.getElementById('apple-sign-in-button').style.display = 'none';
     document.getElementById('apple-sign-out-button').style.display = '';
 
-    const container = document.getElementById('user-thumbnail-container');
     const img = document.getElementById('user-thumbnail');
     const placeholder = document.getElementById('user-thumbnail-placeholder');
+    const unauthenticated = document.getElementById('user-thumbnail-unauthenticated');
 
-    container.style.display = '';
+    // Hide unauthenticated icon, prepare for authenticated state
+    unauthenticated.style.display = 'none';
+    img.style.display = 'none';
+    placeholder.style.display = 'none';
+
     if (userInfo.thumbnailUrl) {
+        // Show placeholder first while loading
+        placeholder.style.display = '';
+
         img.onload = () => {
             img.style.display = '';
             placeholder.style.display = 'none';
         };
         img.onerror = () => {
+            // Keep placeholder visible if image fails to load
             img.style.display = 'none';
             placeholder.style.display = '';
         };
         img.src = userInfo.thumbnailUrl;
     } else {
-        img.style.display = 'none';
+        // No thumbnail URL, just show placeholder
         placeholder.style.display = '';
     }
 }
