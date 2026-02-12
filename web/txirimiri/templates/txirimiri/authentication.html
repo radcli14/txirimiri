@@ -1,0 +1,20 @@
+{% extends "txirimiri/layout.html" %}
+{% load static %}
+
+{% block script %}
+<script src="https://cdn.apple-cloudkit.com/ck/2/cloudkit.js"></script>
+<script type="module" src="{% static 'txirimiri/authentication.js' %}"></script>
+{% endblock %}
+
+{% block body %}
+{% csrf_token %}
+
+<h1>Authentication</h1>
+
+<div>
+    <h2 id="displayed-username"></h2>
+    <div id="apple-sign-in-button"></div>
+    <div id="apple-sign-out-button"></div>
+</div>
+
+{% endblock %}

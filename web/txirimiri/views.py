@@ -17,6 +17,10 @@ def index(request):
     return render(request, "txirimiri/index.html")
 
 
+def authentication(request):
+    return render(request, "txirimiri/authentication.html")
+
+
 @require_POST
 def cloudkit_api_token(request):
     token = os.getenv('CLOUDKIT_API_TOKEN')

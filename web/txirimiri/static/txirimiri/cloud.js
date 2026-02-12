@@ -1,5 +1,5 @@
-let container = null;
-let database = null;
+export let container = null;
+export let database = null;
 
 // After the init function is called, the CloudKit JS library will be configured 
 // and the public database will be available for queries (`database` variable above). 
@@ -20,7 +20,15 @@ export function init() {
                 containerIdentifier: 'iCloud.com.dcengineer.txirimiri',
                 apiTokenAuth: {
                     apiToken: data.api_token,
-                    persist: true
+                    persist: true,
+                    signInButton: {
+                        id: 'apple-sign-in-button',
+                        theme: 'black' // Other options: 'white', 'white-with-outline'.
+                    },
+                    signOutButton: {
+                        id: 'apple-sign-out-button',
+                        theme: 'black'
+                    }
                 },
                 environment: 'development'
             }]
@@ -30,6 +38,7 @@ export function init() {
         container = CloudKit.getDefaultContainer();
         database = container.publicCloudDatabase;
         console.log('CloudKit configured and initialized');
+        console.log("APIToken", data.api_token);
     });
 }
 
