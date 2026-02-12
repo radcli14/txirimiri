@@ -110,6 +110,17 @@ export function fetchSkyboxImageUrl(id) {
     });
 }
 
+// Fetch the CloudKit API token from our backend. Returns a promise resolving with the token string.
+export function fetchApiToken() {
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    return fetch('/api/cloudkit-token/', {
+        method: 'POST',
+        headers: { 'X-CSRFToken': csrfToken },
+    })
+    .then(response => response.json())
+    .then(data => data.api_token);
+}
+
 // Listen for auth token from the authentication popup via BroadcastChannel.
 // Apple's COOP headers nullify window.opener, so we use BroadcastChannel instead.
 export function listenForAuth(onAuthReceived) {

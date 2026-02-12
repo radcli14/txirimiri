@@ -28,8 +28,23 @@ cloud.init().then(() => {
     const channel = new BroadcastChannel('cloudkit-auth');
     channel.onmessage = (event) => {
         if (event.data.ckWebAuthToken) {
-            console.log("Origin: received token via BroadcastChannel, replaying to self");
-            window.postMessage({ ckWebAuthToken: event.data.ckWebAuthToken }, window.location.origin);
+            console.log("Origin: received token via BroadcastChannel");
+            document.getElementById('ck-web-auth-token').textContent = "ckWebAuthToken: " + event.data.ckWebAuthToken;
+
+            // Verify the token by calling CloudKit Web Services REST API directly
+            cloud.fetchApiToken().then(apiToken => {
+                const encodedToken = encodeURIComponent(event.data.ckWebAuthToken);
+                console.log(" - after fetchApiToken");
+                return fetch(`https://api.apple-cloudkit.com/database/1/iCloud.com.dcengineer.txirimiri/development/public/users/current?ckAPIToken=${apiToken}&ckWebAuthToken=${encodedToken}`);
+            })
+            .then(r => r.json())
+            .then(data => {
+                console.log("CloudKit REST API user lookup:", data);
+                if (data.userRecordName) {
+                    displayUserName('User: ' + data.userRecordName);
+                }
+            })
+            .catch(err => console.error("REST API error:", err));
         }
     };
 
