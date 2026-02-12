@@ -15,15 +15,17 @@ if (ckWebAuthToken) {
 
 // This code only runs on the origin page (no ckWebAuthToken in URL).
 // First, try to restore user from Django session
-fetch('/api/get-user-session/')
-    .then(r => r.json())
-    .then(sessionData => {
-        if (sessionData.userRecordName) {
-            console.log("Restoring user from Django session:", sessionData);
-            gotoAuthenticatedState(sessionData);
-        }
-    })
-    .catch(err => console.log("No session to restore:", err));
+document.addEventListener('DOMContentLoaded', () => {
+    fetch('/api/get-user-session/')
+        .then(r => r.json())
+        .then(sessionData => {
+            if (sessionData.userRecordName) {
+                console.log("Restoring user from Django session:", sessionData);
+                gotoAuthenticatedState(sessionData);
+            }
+        })
+        .catch(err => console.log("No session to restore:", err));
+});
 
 cloud.init().then(() => {
     console.log("In authentication.js now");
@@ -58,6 +60,12 @@ cloud.init().then(() => {
             gotoAuthenticatedState(userIdentity);
         }
     }).catch(err => console.log("No existing session:", err));
+
+    // Handle sign out
+    cloud.container.whenUserSignsOut().then(() => {
+        console.log("User signed out");
+        gotoUnauthenticatedState(null, true); // Pass true to clear session
+    }).catch(err => console.log("Sign out handler error:", err));
 }).catch(err => {
     console.error("CloudKit init error:", err);
 })
@@ -125,7 +133,7 @@ function displayUserName(name) {
     }
 }
 
-function gotoUnauthenticatedState(error) {
+function gotoUnauthenticatedState(error, isSignOut = false) {
     console.log(" - Unauthenticated state, error:", error);
     displayUserName('Unauthenticated User');
     document.getElementById('apple-sign-in-button').style.display = '';
@@ -136,8 +144,10 @@ function gotoUnauthenticatedState(error) {
     document.getElementById('user-thumbnail-placeholder').style.display = 'none';
     document.getElementById('user-thumbnail-unauthenticated').style.display = '';
 
-    // Clear user session on sign out
-    clearUserSession();
+    // Only clear user session when explicitly signing out, not on page load
+    if (isSignOut) {
+        clearUserSession();
+    }
 }
 
 function clearUserSession() {
