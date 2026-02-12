@@ -40,7 +40,16 @@ cloud.init().then(() => {
             .then(data => {
                 console.log("CloudKit REST API user lookup:", data);
                 if (data.userRecordName) {
-                    gotoAuthenticatedState({ userRecordName: data.userRecordName });
+                    // Fetch the user's name and thumbnail from the Users record
+                    cloud.fetchUserRecord(data.userRecordName)
+                        .then(userRecord => {
+                            console.log("User record:", userRecord);
+                            gotoAuthenticatedState(userRecord);
+                        })
+                        .catch(err => {
+                            console.warn("Could not fetch user record:", err);
+                            gotoAuthenticatedState({ name: null, thumbnailUrl: null });
+                        });
                 }
             })
             .catch(err => console.error("REST API error:", err));
@@ -78,7 +87,7 @@ function gotoUnauthenticatedState(error) {
 
 function gotoAuthenticatedState(userInfo) {
     console.log(" - Authenticated state:", userInfo);
-    displayUserName('Signed In');
+    displayUserName(userInfo.name || 'Signed In');
     document.getElementById('apple-sign-in-button').style.display = 'none';
     document.getElementById('apple-sign-out-button').style.display = '';
 }

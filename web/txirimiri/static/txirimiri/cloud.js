@@ -110,6 +110,22 @@ export function fetchSkyboxImageUrl(id) {
     });
 }
 
+// Fetch a Users record by its recordName (which matches the userRecordName from auth).
+// Returns a promise resolving with { name, thumbnailUrl } or null.
+export function fetchUserRecord(userRecordName) {
+    return database.fetchRecords([userRecordName], {
+        desiredKeys: ['name', 'thumbnail']
+    })
+    .then(response => {
+        if (response.hasErrors) throw response.errors[0];
+        const record = response.records[0];
+        return {
+            name: record.fields.name?.value || null,
+            thumbnailUrl: record.fields.thumbnail?.value?.downloadURL || null,
+        };
+    });
+}
+
 // Fetch the CloudKit API token from our backend. Returns a promise resolving with the token string.
 export function fetchApiToken() {
     const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
