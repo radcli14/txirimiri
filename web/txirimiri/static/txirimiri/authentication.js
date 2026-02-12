@@ -119,8 +119,15 @@ function onReceiveUserIdentity(userIdentity) {
         console.log(" - userIdentity:", userIdentity);
         gotoAuthenticatedState(userIdentity);
     } else {
-        console.log(" - unidentified user");
-        gotoUnauthenticatedState();
+        console.log(" - unidentified user from CloudKit");
+        // Don't go to unauthenticated state if we already restored from IndexedDB
+        userDb.getUser().then(userData => {
+            if (!userData || !userData.userRecordName) {
+                gotoUnauthenticatedState();
+            } else {
+                console.log("User already authenticated from IndexedDB, ignoring CloudKit null result");
+            }
+        }).catch(() => gotoUnauthenticatedState());
     }
 }
 
