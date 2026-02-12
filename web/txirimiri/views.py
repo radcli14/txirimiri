@@ -18,7 +18,15 @@ def index(request):
 
 
 def authentication(request):
-    return render(request, "txirimiri/authentication.html")
+    print("authentication called")
+    post = ""
+    if request.method == "POST":
+        print(" - with post request", request.POST)
+        post = f"{request.POST}"
+        
+    return render(request, "txirimiri/authentication.html", {
+        "post": post
+    })
 
 
 @require_POST
