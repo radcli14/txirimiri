@@ -19,13 +19,13 @@ def index(request):
 
 def authentication(request):
     print("authentication called")
-    post = ""
+    req = f"request: {request}"
     if request.method == "POST":
         print(" - with post request", request.POST)
-        post = f"{request.POST}"
+        req = f"POST: {request.POST}"
         
     return render(request, "txirimiri/authentication.html", {
-        "post": post
+        "request": req
     })
 
 
