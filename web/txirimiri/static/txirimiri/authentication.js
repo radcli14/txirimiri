@@ -1,24 +1,39 @@
 import * as cloud from './cloud.js';
 
-// Parse the ckWebAuthToken from the URL if this page was loaded as an auth redirect callback.
-// Broadcast it to any listening pages (e.g. the main page) via BroadcastChannel.
+// Parse the ckWebAuthToken from the URL if this page was loaded as an auth redirect
+// callback (popup). If present, broadcast to the origin page via BroadcastChannel.
 const params = new URLSearchParams(window.location.search);
 const ckWebAuthToken = params.get('ckWebAuthToken');
 if (ckWebAuthToken) {
+    // This is the popup — send the token to the origin page and close.
     const channel = new BroadcastChannel('cloudkit-auth');
+    console.log("Popup: broadcasting ckWebAuthToken to origin");
     channel.postMessage({ ckWebAuthToken });
     channel.close();
+    window.close();
 }
 
+// This code only runs on the origin page (no ckWebAuthToken in URL).
 cloud.init().then(() => {
     console.log("In authentication.js now");
     console.log(" - container:", cloud.container);
     console.log(" - database:", cloud.database);
-    console.log(" - ckWebAuthToken:", ckWebAuthToken);
 
-      // Check a user is signed in and render the appropriate button.
-    cloud.container.setUpAuth()
-    .then(function(userIdentity) {
+    // setUpAuth() registers an internal postMessage listener for the auth popup.
+    // Since Apple's COOP headers break window.opener, the popup can't post back.
+    // Instead, we listen on BroadcastChannel and replay the token as a
+    // self-postMessage so CloudKit JS receives it as if the popup had sent it.
+    const authPromise = cloud.container.setUpAuth();
+
+    const channel = new BroadcastChannel('cloudkit-auth');
+    channel.onmessage = (event) => {
+        if (event.data.ckWebAuthToken) {
+            console.log("Origin: received token via BroadcastChannel, replaying to self");
+            window.postMessage({ ckWebAuthToken: event.data.ckWebAuthToken }, window.location.origin);
+        }
+    };
+
+    authPromise.then(function(userIdentity) {
 
       // Either a sign-in or a sign-out button was added to the DOM.
 
