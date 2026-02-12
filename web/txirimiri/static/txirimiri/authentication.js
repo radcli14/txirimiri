@@ -28,7 +28,20 @@ cloud.init().then(() => {
     const channel = new BroadcastChannel('cloudkit-auth');
     channel.onmessage = onReceiveAuthToken;
 
-    authPromise.then(onReceiveUserIdentity);
+    authPromise.then(onReceiveUserIdentity).catch(err => {
+        console.error("setUpAuth error:", err);
+        gotoUnauthenticatedState(err);
+    });
+
+    // Also check if user is already authenticated
+    cloud.container.whenUserSignsIn().then(userIdentity => {
+        console.log("User was already signed in:", userIdentity);
+        if (userIdentity) {
+            gotoAuthenticatedState(userIdentity);
+        }
+    }).catch(err => console.log("No existing session:", err));
+}).catch(err => {
+    console.error("CloudKit init error:", err);
 })
 
 function onReceiveUserData(data) {
@@ -38,11 +51,17 @@ function onReceiveUserData(data) {
         cloud.fetchUserRecord(data.userRecordName)
             .then(userRecord => {
                 console.log("User record:", userRecord);
+                // Add userRecordName from REST API to the user record
+                userRecord.userRecordName = data.userRecordName;
                 gotoAuthenticatedState(userRecord);
             })
             .catch(err => {
                 console.warn("Could not fetch user record:", err);
-                gotoAuthenticatedState({ name: null, thumbnailUrl: null });
+                gotoAuthenticatedState({
+                    userRecordName: data.userRecordName,
+                    name: null,
+                    thumbnailUrl: null
+                });
             });
     }
 }
@@ -51,7 +70,13 @@ function onReceiveAuthToken(event) {
     if (event.data.ckWebAuthToken) {
         console.log("Origin: received token via BroadcastChannel");
 
-        // Verify the token via CloudKit REST API
+        // Replay the token to CloudKit JS via postMessage so it can establish a session
+        // This mimics what the popup would have done if window.opener worked
+        window.postMessage({
+            ckWebAuthToken: event.data.ckWebAuthToken
+        }, window.location.origin);
+
+        // Also verify the token via CloudKit REST API to get user details immediately
         cloud.fetchApiToken().then(apiToken => {
             const encodedToken = encodeURIComponent(event.data.ckWebAuthToken);
             return fetch(`https://api.apple-cloudkit.com/database/1/iCloud.com.dcengineer.txirimiri/development/public/users/current?ckAPIToken=${apiToken}&ckWebAuthToken=${encodedToken}`);
@@ -92,6 +117,20 @@ function gotoUnauthenticatedState(error) {
     document.getElementById('user-thumbnail').style.display = 'none';
     document.getElementById('user-thumbnail-placeholder').style.display = 'none';
     document.getElementById('user-thumbnail-unauthenticated').style.display = '';
+
+    // Clear user session on sign out
+    clearUserSession();
+}
+
+function clearUserSession() {
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    fetch('/api/clear-user-session/', {
+        method: 'POST',
+        headers: { 'X-CSRFToken': csrfToken }
+    })
+    .then(response => response.json())
+    .then(data => console.log('User session cleared:', data))
+    .catch(err => console.error('Error clearing user session:', err));
 }
 
 function gotoAuthenticatedState(userInfo) {
@@ -127,4 +166,28 @@ function gotoAuthenticatedState(userInfo) {
         // No thumbnail URL, just show placeholder
         placeholder.style.display = '';
     }
+
+    // Save user info to Django session (if we have userRecordName from REST API)
+    if (userInfo.userRecordName || userInfo.name) {
+        saveUserToSession(userInfo);
+    }
+}
+
+function saveUserToSession(userInfo) {
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    fetch('/api/save-user-session/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+        },
+        body: JSON.stringify({
+            userRecordName: userInfo.userRecordName,
+            name: userInfo.name,
+            thumbnailUrl: userInfo.thumbnailUrl
+        })
+    })
+    .then(response => response.json())
+    .then(data => console.log('User session saved:', data))
+    .catch(err => console.error('Error saving user session:', err));
 }
