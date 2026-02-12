@@ -70,15 +70,6 @@ body {
     opacity: 1;
 }
 
-/* Auth button containers in navbar */
-#apple-sign-in-button,
-#apple-sign-out-button {
-    display: flex;
-    align-items: center;
-    max-height: 36px;
-    overflow: hidden;
-}
-
 /* Line clamp for description truncation (no Bootstrap equivalent) */
 .line-clamp-2 {
     display: -webkit-box;
