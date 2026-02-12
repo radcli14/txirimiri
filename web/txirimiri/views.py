@@ -29,12 +29,15 @@ def authentication(request):
     if request.method == "POST":
         print(" - with post request", request.POST)
         req = f"POST: {request.POST}"
-        
-    return render(request, "txirimiri/authentication.html", {
+
+    response = render(request, "txirimiri/authentication.html", {
         "request": req,
         "ckWebAuthToken": ckWebAuthToken,
         "ckSession": ckSession
     })
+    # Allow this page to be embedded in an iframe from the same origin
+    response['X-Frame-Options'] = 'SAMEORIGIN'
+    return response
 
 
 @require_POST

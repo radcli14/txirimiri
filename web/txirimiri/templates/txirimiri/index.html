@@ -26,8 +26,11 @@
         <span class="navbar-text flex-grow-1 h4 fw-bold mb-0" id="navbar-title">
             Select a model
         </span>
-        <button class="btn btn-outline-secondary d-none" type="button" id="view-options-btn" aria-label="View options">
+        <button class="btn btn-outline-secondary d-none me-2" type="button" id="view-options-btn" aria-label="View options">
             <i class="bi bi-sliders"></i>
+        </button>
+        <button class="btn btn-outline-secondary" type="button" data-bs-toggle="offcanvas" data-bs-target="#auth-panel" aria-label="Authentication">
+            <i class="bi bi-person-circle"></i>
         </button>
     </div>
 </nav>
@@ -47,6 +50,17 @@
                 <div id="model-list" class="list-group list-group-flush"></div>
             </div>
         </div>
+    </div>
+</div>
+
+<!-- Authentication Panel (Offcanvas Right) -->
+<div class="offcanvas offcanvas-end" tabindex="-1" id="auth-panel">
+    <div class="offcanvas-header">
+        <h5 class="offcanvas-title">User Account</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    </div>
+    <div class="offcanvas-body p-0">
+        <iframe src="/authentication" class="w-100 h-100 border-0"></iframe>
     </div>
 </div>
 
